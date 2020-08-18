@@ -901,7 +901,7 @@ public static ExecutorService newSingleThreadExecutor() {
 }
 ```
 创建一个单线程线程池，和newFixedThreadPool一样，线程数固定为1就可以了  
-### newSingleThreadExecutor
+### newCachedThreadPool
 ```java
 public static ExecutorService newCachedThreadPool() {
     return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
