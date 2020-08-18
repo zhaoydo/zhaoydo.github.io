@@ -878,3 +878,65 @@ private void processWorkerExit(Worker w, boolean completedAbruptly) {
 丢弃任务队列中第一个任务，重新提交任务
 ### CallerRunsPolicy
 用调用execute的线程直接run任务
+
+# Executors
+线程池工具类  
+## 创建线程池
+### newFixedThreadPool
+```java
+public static ExecutorService newFixedThreadPool(int nThreads) {
+    return new ThreadPoolExecutor(nThreads, nThreads,
+                                  0L, TimeUnit.MILLISECONDS,
+                                  new LinkedBlockingQueue<Runnable>());
+}
+```
+创建一个固定数量的线程池，corePoolSize=maxmumPoolSize=nThreads，提供无界队列LinkedBlockingQueue来缓存任务队列  
+### newSingleThreadExecutor
+```java
+public static ExecutorService newSingleThreadExecutor() {
+    return new FinalizableDelegatedExecutorService
+        (new ThreadPoolExecutor(1, 1,
+                                0L, TimeUnit.MILLISECONDS,
+                                new LinkedBlockingQueue<Runnable>()));
+}
+```
+创建一个单线程线程池，和newFixedThreadPool一样，线程数固定为1就可以了  
+### newSingleThreadExecutor
+```java
+public static ExecutorService newCachedThreadPool() {
+    return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                                  60L, TimeUnit.SECONDS,
+                                  new SynchronousQueue<Runnable>());
+}
+```
+创建一个缓存线程池(直译过来名字不太好理解)，就是不限制最大线程数，每进入一个任务就新创建一个线程。 任务队列SynchronousQueue，也就是队列中不缓存任何任务  
+### 其他线程池
+#### ScheduledThreadPoolExecutor
+```java
+public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) {
+    return new ScheduledThreadPoolExecutor(corePoolSize);
+}
+```
+创建一个ScheduledThreadPoolExecutor，可以延迟、周期执行任务
+ScheduledThreadPoolExecutor是ThreadPoolExecutor的子类，实现了ScheduledExecutorService来实现延时、周期执行
+#### newWorkStealingPool
+```java
+public static ExecutorService newWorkStealingPool(int parallelism) {
+    return new ForkJoinPool
+        (parallelism,
+         ForkJoinPool.defaultForkJoinWorkerThreadFactory,
+         null, true);
+}
+```
+newWorkStealingPool 是jdk7引入的线程池，继承AbstractExecutorService。 与ThreadPoolExecutor相比是把一个任务队列分隔成parallelism（并行数量，默认为cpu核心数）个任务队列，每个队列的任务执行完后会去其他队列偷任务来执行（workSteal）。能够更大效率利用cpu  
+##### unconfigurableExecutorService
+```java
+public static ExecutorService unconfigurableExecutorService(ExecutorService executor) {
+    if (executor == null)
+        throw new NullPointerException();
+    return new DelegatedExecutorService(executor);
+}
+```
+将线程池封装为不可配置的的线程池，也就是不能修改线程池中的一些参数信息，unconfigurableScheduledExecutorService同理
+## 其他方法
+还没看
