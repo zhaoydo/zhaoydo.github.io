@@ -392,7 +392,56 @@ public abstract class AbstractExecutorService implements ExecutorService {
 ThreadPoolExecutor 是JDK线程池的完整实现，实现了任务提交、线程管理，任务队列管理，任务监控等功能
 
 ## 整体结构
-TODO 
+看一眼构造方法,如果是只使用线程池，用这个就够了，后面的的源码中，会一直贯穿这些参数  
+```java
+/**
+ * 构造方法
+ * @param corePoolSize 核心线程数
+ * @param maximumPoolSize 最大线程数
+ * @param keepAliveTime 线程空闲时间， 线程空闲时，实际线程数超出核心线程数时，超出线程空闲时间后，将被销毁
+ * @param unit 时间单位
+ * @param workQueue 缓存队列
+ * @param threadFactory 线程工厂，在这里可以自定义一些线程
+ * @param handler 四种任务拒绝策略
+ */
+public ThreadPoolExecutor(int corePoolSize,
+                          int maximumPoolSize,
+                          long keepAliveTime,
+                          TimeUnit unit,
+                          BlockingQueue<Runnable> workQueue,
+                          ThreadFactory threadFactory,
+                          RejectedExecutionHandler handler) {
+    if (corePoolSize < 0 ||
+        maximumPoolSize <= 0 ||
+        maximumPoolSize < corePoolSize ||
+        keepAliveTime < 0)
+        throw new IllegalArgumentException();
+    if (workQueue == null || threadFactory == null || handler == null)
+        throw new NullPointerException();
+    this.acc = System.getSecurityManager() == null ?
+            null :
+            AccessController.getContext();
+    this.corePoolSize = corePoolSize;
+    this.maximumPoolSize = maximumPoolSize;
+    this.workQueue = workQueue;
+    this.keepAliveTime = unit.toNanos(keepAliveTime);
+    this.threadFactory = threadFactory;
+    this.handler = handler;
+}
+```
+一些需要关注的变量  
+```java
+//线程池全局锁，源码中会一直用到
+private final ReentrantLock mainLock = new ReentrantLock();
+//workers 线程池内一个个Worker的Set集合，每个Worker对应池内的一个线程
+private final HashSet<Worker> workers = new HashSet<Worker>();
+//AQS的概念还没搞懂 TODO
+private final Condition termination = mainLock.newCondition();
+//是否允许关闭核心线程，如果为true，核心线程在超过keepAliveTime后也会关闭
+private volatile boolean allowCoreThreadTimeOut;
+//工作队列，对应构造函数中的workQueue
+private final BlockingQueue<Runnable> workQueue;
+```
 ## 线程池状态
 线程池中维护了一个32位数字ctl，前三位表示线程池状态，后29位表示线程池数量  
 直接看代码
@@ -589,7 +638,8 @@ private boolean addWorker(Runnable firstTask, boolean core) {
         //线程状态
         int rs = runStateOf(c);
         /**
-         * 如果线程已关闭并且满足下列条件之一，return false
+         * 如果线程已关闭并且满足
+         * 下列条件之一，return false
          * 1、rs > SHUTDOWN 也就是 STOP, TIDYING, 或 TERMINATED
          * 2、firstTask !=null
          * 3、workQueue.isEmpty()
@@ -928,7 +978,10 @@ public static ExecutorService newWorkStealingPool(int parallelism) {
          null, true);
 }
 ```
-newWorkStealingPool 是jdk7引入的线程池，继承AbstractExecutorService。 与ThreadPoolExecutor相比是把一个任务队列分隔成parallelism（并行数量，默认为cpu核心数）个任务队列，每个队列的任务执行完后会去其他队列偷任务来执行（workSteal）。能够更大效率利用cpu  
+newWorkStealingPool 是jdk7引入的线程池，继承AbstractExecutorService。 与ThreadPoolExecutor相比是把一个任务队列分隔成parallelism（并行数量，默认为cpu核心数）个任务队列，每个队列的任务执行完后会去其他队列偷任务来执行（workSteal）。能够更大效率利用cpu    
+> 关于ForkJoinPool，一个使用场景，计算1-10000000之间的数字之和  
+> 对于ThreadPoolExecutor,1、分解任务（单线程）2、执行任务（多线程）3、合并任务结果（单线程）  
+> 用ForkJoinPool递归操作（任务中判断继续分解任务（fork）or执行任务，执行完后合并任务（join）），这三步都可以多线程执行
 ##### unconfigurableExecutorService
 ```java
 public static ExecutorService unconfigurableExecutorService(ExecutorService executor) {
@@ -938,5 +991,6 @@ public static ExecutorService unconfigurableExecutorService(ExecutorService exec
 }
 ```
 将线程池封装为不可配置的的线程池，也就是不能修改线程池中的一些参数信息，unconfigurableScheduledExecutorService同理
-## 其他方法
-还没看
+## 总结
+线程池的概念前面写的很详细了，过一遍就对概念都清楚了，也没什么好总结的。
+
