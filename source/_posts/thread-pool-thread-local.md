@@ -39,8 +39,10 @@ InheritableThreadLocal特殊的地方，线程创建时会复制父线程的Inhe
 {% asset_img 2.png [] %}
 
 ## BUG分析
-1. 项目启动后，用户操作使用线程池执行任务，线程池创建新线程执行，复制了父线程的InheritableThreadLocal，池内线程获取Shiro当前登录人正常
-2. 后面其他人在操作，线程池内线程执行任务，使用第一步已存在的线程执行，Shiro获取的登录人仍然是线程第一次创建时的登录人
+背景：用户请求父线程进行操作，子线程（线程池内线程）记录日志
+1. 项目启动，线程池内子线程数量为0
+2. 用户A操作，线程池创建子线程taskExecutor1，复制父线程InheritableThreadLocal，taskExecutor1线程中记录日志。 正常
+3. 用户B操作，线程池内已有线程taskExecutor1，用taskExecutor1线程记录日志。 此时InheritableThreadLocal中还是用户A的Session，导致用户B操作，日志中操作人是A
 # 解决方案
 很简单只要每次使用线程的时候，重新进行一下父线程InheritableThreadLocal复制到子线程的操作即可  
 Spring提供的ThreadPoolTaskExecutor提供了一个TaskDecorator，相当于封装了一层任务（Runnable），先看一下源码
