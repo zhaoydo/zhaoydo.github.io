@@ -9,7 +9,7 @@ tags:
 - 使用的相关框架
 1. Shiro 权限框架
 2. ThreadPoolTaskExecutor Spring线程池，在ThreadPoolExecutor上封装了一层  
-
+<!-- more -->
 订单操作日志如下  
 
 |订单号    |操作    |操作人    |日期    |
