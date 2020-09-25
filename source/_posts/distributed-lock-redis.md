@@ -5,10 +5,13 @@ tags:
 ---
 # 问题背景
 实际开发场景中，可能需要处理并发线程互斥地访问某个共享资源。 Java中通常用synchronized、Lockd来加锁，避免多线程中由于竞争导致的数据不一致问题。  
-**问题是Java中的锁，只在同一JVM环境下才生效。** 
+
+**问题是Java中的锁，只在同一JVM环境下才生效。**  
+
 分布式系统中，应用部署在多台服务器。这时候需要使用分布式锁，利用一个第三方节点来获取/释放锁。  
 
 分布式锁实现方式有数据库、redis、zookeeper等，基本原理是一样的：标识锁状态+锁的唯一持有者。 这里只介绍单节点下redis实现
+![两种架构下锁示意图](http://122.51.119.99:9000/blog/redis-lock/redis-lock02.png)
 <!-- more -->
 # 分布式锁要求
 1. 互斥性（加锁）：任意时刻只能有一个客户端的一个线程持有锁
@@ -18,9 +21,13 @@ tags:
 
 # 实现
 ## demo1 最原始的锁操作
-SETNX key value  
+redis操作：SETNX key value  
 1. key 不存在，SETNX会设置key-value，并返回true
 2. key存在，不做操作，返回false  
+
+基于这个特性：
+1. 客户端SETNX(key)返回true， 认为获得了锁。
+2. 客户端del(key),认为释放了锁  
 
 demo1,代码显式获取/释放锁：  
 ```java
@@ -59,6 +66,19 @@ public String demo1() throws InterruptedException{
 ```
 redis实现分布式锁的原理就是基于SETNX。 以下部分都是基于demo1的代码进行封装。
 ## demo2 封装锁对象
+有几个要注意的参数
+1. key:锁的key，任一时间不能有两个相同key的锁存在
+2. expire:锁超时时间，根据业务大小自行设定(处理获取锁后，客户端崩溃)
+3. safetyTime:锁的安全时间（处理获取锁SETNX期间，redis崩溃导致expire未生效）。
+> 由于setNX与expire是分两步操作，如果A setNX后挂掉，导致锁不会超时，B进来永远等不到A释放锁，这时候就会死锁
+> 解决方法是B获取锁的时候，如果超出safetyTime，强制把A的锁覆盖掉
+4. waitMillisPer: 等待时间,获取锁的while循环，每次等待50ms，减少对CPU和redis资源的占用
+
+> 前面提到的只允许释放自己的锁（解锁)
+> 获取锁时，设置一个value，释放锁操作时，比较value，只释放自己的锁。 value这里取了线程的ID+name。 
+> 不同客户端中碰到线程ID、name一样，并且一方锁超期的情况概率很小。 这里不考虑这种情况了。 
+> 优化：lock、unlock方法增加一个UUID的value参数（但是UUID不能实现可重入锁） 或者 ThreadLocal来记录lock、unlock的value  
+
 直接看代码，SyncLock中封装lock、unLock函数
 ```java
 /**
@@ -186,16 +206,6 @@ public class SyncLock extends BaseLogger {
     }
 }
 ```
-有几个要注意的参数
-1. key:锁的key，任一时间不能有两个相同key的锁存在
-2. expire:锁超时时间，根据业务大小自行设定
-3. safetyTime:锁的安全时间。
-> 由于setNX与expire是分两步操作，如果A setNX后挂掉，导致锁不会超时，B进来永远等不到A释放锁，这时候就会死锁
-> 解决方法是B获取锁的时候，如果超出safetyTime，强制把A的锁覆盖掉
-4. waitMillisPer: 等待时间,获取锁的while循环，每次等待50ms，减少对CPU和redis资源的占用
-
-> 前面提到的只允许释放自己的锁（解锁)
-> 释放锁操作时，比较value，只释放自己的锁。 value这里取了线程的ID+name。 不同客户端中碰到线程ID、name一样，并且一方锁超期的情况概率很小。 这里不考虑了。 lock、unlock方法增加一个UUID的value参数 或者 ThreadLocal来记录lock、unlock的value
 
 demo2 封装获取/释放锁代码。 这里与单机环境下使用java显式锁ReentrantLock的代码基本一样
 ```java
@@ -227,7 +237,7 @@ public String demo2() throws InterruptedException{
 }
 ```
 
-## demo3 集成Spring
+## demo3 与Spring集成
 上面demo1、demo2中的代码中，加锁、解锁的操作都会对业务代码有侵入性。  
 自定义注解+Spring AOP封装，使用时一行注解实现  
 
@@ -263,7 +273,7 @@ public class SyncLockFactory {
     }
 }
 ```
-### 创建注解类
+### 注解类
 ```java
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -274,7 +284,7 @@ public @interface SyncLockable {
     long expire() default 10000L;
 }
 ```
-### 实现AOP
+### AOP处理
 注解aop实现，拦截@SyncLockable、@SyncLockableNow,目标方法前后分别加上获取锁、释放锁的操作
 ```java
 /**
@@ -347,7 +357,7 @@ public class SyncLockHandle {
 
 }
 ```
-### 客户端使用  
+### 客户端使用 自定义注解  
 ```java
 /**
  *  demo3
@@ -361,9 +371,52 @@ public String demo3() throws InterruptedException{
     return "demo3";
 }
 ```
+## demo4 扩展，支持el表达式
+场景： 对SKU扣减库存，这时候只要保证同一个仓库中的SKU操作不出现并发即可。这时候我们希望分布式锁的key可以根据参数来确定。  
+在AOP代码中加上el表达式的解析逻辑即可
+```java
+/**
+ * 解析el表达式
+ * @param key
+ * @param point
+ * @return
+ */
+private String parseEL(String key, ProceedingJoinPoint point){
+    //解析el表达式，将#id等替换为参数值
+    ExpressionParser expressionParser = new SpelExpressionParser();
+    //el表达式需要用#{}包裹
+    Expression expression = expressionParser.parseExpression(key, ParserContext.TEMPLATE_EXPRESSION);
+    EvaluationContext context = new StandardEvaluationContext();
+    String[] parameterNames = ((MethodSignature)point.getSignature()).getParameterNames();
+    Object[] args = point.getArgs();
+    if(parameterNames==null || parameterNames.length<=0){
+        return key;
+    }
+    for (int i = 0; i <parameterNames.length ; i++) {
+        context.setVariable(parameterNames[i],args[i]);
+    }
+    key = expression.getValue(context).toString();
+    return key;
+}
+```
+客户端使用 支持el表达式的注解key
+```java
+/**
+ *  demo4
+ *  aop注解实现 + el表达式
+ */
+@SyncLockable(key = "demo4#{#whId+'_'+#sku}")
+@RequestMapping("demo4")
+public String demo4(Integer whId,String sku) throws InterruptedException{
+    //模拟业务逻辑，执行5s
+    Thread.sleep(5000L);
+    return "demo4";
+}
+```
+
 # 总结
 
-## 缺点
-1. 依赖第三方中间件，系统可靠性降低
-2. 只实现了单节点redis下的锁
-3. 加锁解锁需要与redis通信，性能会比Synchronize、Lock更低
+## 需要改进的地方
+1. 当前版本是非公平锁。 多个客户端抢占锁资源时，不能按照先来先得的顺序获得锁
+2. key支持el表达式后，key的值根据方法参数变化。 SyncLockFactory中syncLockMap缓存的SyncLock对象可能会很大导致内存溢出。 
+> 考虑把syncLockMap改进为弱引用,不使用时Map中对象允许被回收
