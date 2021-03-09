@@ -13,7 +13,7 @@ tags:
 如果需要RabbitMq server安装教程，请参阅[安装教程](https://www.rabbitmq.com/download.html)或者使用[Docker image](https://registry.hub.docker.com/_/rabbitmq/)
 
 教程的[可执行版本](https://github.com/rabbitmq/rabbitmq-tutorials)和[官方网站](https://github.com/rabbitmq/rabbitmq-website)一样都是开源的  
-
+<!--more-->
 *译者注：官方文档提供了不同开发语言的示例，以下只翻译java的*
 
 ## Hello World
@@ -197,4 +197,60 @@ java -cp .:amqp-client-5.7.1.jar:slf4j-api-1.7.26.jar:slf4j-simple-1.7.26.jar Re
 ```sh
 java -cp .:amqp-client-5.7.1.jar:slf4j-api-1.7.26.jar:slf4j-simple-1.7.26.jar Send
 ```
+> Windows中，使用";"代替":"来分隔类路径
+消费者将打印通过RabbitMQ从消息发布者获得的消息。消费者将保持运行，等待消息（ctrl+c终止），因此请尝试从另一个中断运行发布者（*译者：没看明白*）  
 
+> **Listing queues**  
+> 你也许希望看到对了中有那些队列，队列中有多少消息。可以通过*rabbitmqctl*工具来实现（有查看权限的用户）  
+>  ```
+>  sudo rabbitmqctl list_queues
+>  ```  
+>  Windows中省略sudo  
+>  ```
+>  rabbitmqctl.bat list_queues
+>  ```  
+## Work Queues
+![work queues](https://www.rabbitmq.com/img/tutorials/python-two.png)
+在第一个教程中(Hello World)我们写了程序从一个指定的队列中来发送和接收消息。在本章教程中，我们将创建一个工作队列（Work Queue）用来将耗时的任务分配给多个Worker。  
+
+Work Queues(又名：Task Queues)主要目的是：对于资源密集型任务，我们会避免立即执行并等待任务完成，而是安排任务晚一点执行。我们将任务封装成一个对象发送到队列。一个后台运行的Worker进程将取走任务并执行。当运行多个Workers时，任务将共享给每个Worker。  
+在一个短Http请求窗口中要处理一个复杂的任务是不可能的,对于这种情况，Work Queues这个概念是非常有用的。  
+### 准备
+在教程的上一部分中，我们发送了一条包含“Hello World!”的消息。现在我们将发送一个字符串来表示复杂的任务。我们没有一个真实的任务，像调整图片大小或者渲染pdf，因此我们用Thread.sleep()方法来模拟很忙的任务。 我们将以字符串中点的数量来模拟任务的复杂性，每个点将占用1秒来工作。 例如，一个模拟任务“Hello...”,将会花费三秒钟。  
+
+我们将略微修改一下上一个示例中的Send.java代码，来允许从命令行发送任何消息。 这个程序将吧任务安排到工作队列中，所以我们将它命名为NewTask.java:  
+```java
+String message = String.join(" ", argv);
+
+channel.basicPublish("", "hello", null, message.getBytes());
+System.out.println(" [x] Sent '" + message + "'");
+```
+我们之前的Recv.java也需要做一些变动：需要对消息体中的每个点模拟1秒的工作时间。 它将处理已投递的消息并执行任务，我们叫它Worker.java:  
+```java
+DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+  String message = new String(delivery.getBody(), "UTF-8");
+
+  System.out.println(" [x] Received '" + message + "'");
+  try {
+    doWork(message);
+  } finally {
+    System.out.println(" [x] Done");
+  }
+};
+boolean autoAck = true; // acknowledgment is covered below
+channel.basicConsume(TASK_QUEUE_NAME, autoAck, deliverCallback, consumerTag -> { });
+```
+模拟任务来模拟执行时间
+```java
+private static void doWork(String task) throws InterruptedException {
+    for (char ch: task.toCharArray()) {
+        if (ch == '.') Thread.sleep(1000);
+    }
+}
+```
+编译这里两段代码，参考教程1（使用工作目录中的jar文件和环境变量CP）
+```sh
+javac -cp $CP NewTask.java Worker.java
+```
+### 循环调度
+使用任务队列的一个优点是能轻松地进行并行工作。如果我们正在积累
