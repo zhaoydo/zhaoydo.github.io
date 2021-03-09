@@ -3,16 +3,16 @@ title: Java7/8 中HashMap和ConcurrentHashMap源码
 date: 2021-01-19 20:00:36
 tags:
 ---
-读一下hash源码
+读Java7/8 中HashMap和ConcurrentHashMap源码，理解其数据结构与并发处理。  
 <!--more-->
-
+文章参考了[https://javadoop.com/post/hashmap#toc_16](https://javadoop.com/post/hashmap#toc_16 "Java7/8 中的 HashMap 和 ConcurrentHashMap 全解析"),图片也是直接引用这位博主的  
 ## Java7 HashMap
 ### 总体结构
 ![hashmap](https://www.javadoop.com/blogimages/map/1.png)
 java7中，HashMap是一个数组，数组每个节点是一个单向链表，链表的每个节点是HashMap的一个元素。  
 **几个重要的变量**  
 **loadFactor** 负载因子，默认0.75  
-**capacity** 当前数组容量，2^n,每次扩容*2  
+**capacity** 当前数组容量，2^n,每次扩容\*2   
 **size** HashMap已存在元素数量  
 **threshold** 扩容阈值，=loadFactor*capacity  
 ### 初始化
@@ -87,6 +87,7 @@ final int hash(Object k) {
 1. key=null, 直接去table[0]处理
 2. 计算key的hash、在数组中的index。遍历对应数组位置链表中元素，equals则替换旧值
 3. 不存在旧值则addEntry  
+
 ```java
 public V put(K key, V value) {
     if (key == null)
@@ -116,10 +117,11 @@ public V put(K key, V value) {
     return null;
 }
 ```
-#### put
+
 put时，如果key不存在，则新增一个entry。  
 1. 判断是否需要扩容。扩容时capacity*2，并重新计算key在数组中的index
 2. 将数组添加到数组对应index处链表的表头  
+
 ```java
 /**
  * 添加一个entry
@@ -193,6 +195,7 @@ get操作很简单
 1. key=null 固定取table[0]
 2. 对key进行hash，计算出数组index
 3. 遍历table[index]中链表，取equals(key)的元素  
+
 ```java
 public V get(Object key) {
     if (key == null)
@@ -350,6 +353,7 @@ Segment内部put用ReentrantLock来保证线程安全，锁住当前Segment
 1. 获取锁
 2. 遍历链表元素，进行put操作（这一步与HashMap相似）
 3. 释放锁  
+
 ```java
 /**
  * Segment内部put操作
@@ -427,6 +431,7 @@ put获取循环获取当前Segment独占锁，并实例化node（如果key不存
 1. 循环获取锁
 2. 循环获取锁时顺便遍历当前链表的每个节点，看key是否存在，不存在初始化node
 3. 直到获取到锁  
+
 ```java
 /**
  * put获取循环获取当前Segment独占锁，并实例化node（如果key不存在）
@@ -1232,3 +1237,16 @@ public V get(Object key) {
     return null;
 }
 ```
+## 总结
+**数据结构**  
+Java7  
+HashMap 数组+链表  
+ConcurrentHashMap Segment数组+节点数组+链表  
+Java8中  
+HashMap 数组+链表/红黑树  
+ConcurrentHashMap 数组+链表/红黑树  
+**并发操作**
+Java7、8 HashMap线程不安全，不支持并发  
+Java7 ConcurrentHashMap，通过ReentrantLock获得Segment上的独占锁来对节点内数组操作。CAS初始化Segment。扩容时用volatile保持内存可见性  
+Java8 ConcurrentHashMap 通过给数组上头节点加监视器锁的方式来保证线程安全。扩容时CAS操作SIZECTL  
+看完一遍后，ConcurrentHashMap中的扩容和数据迁移代码比较难懂，其他地方都可以理解，不少地方看到后面就理解了。
