@@ -1,6 +1,7 @@
 ---
 title: Java7/8 中HashMap和ConcurrentHashMap源码
 date: 2021-01-19 20:00:36
+updated: 2021-03-30 00:00:00
 tags:
 ---
 读Java7/8 中HashMap和ConcurrentHashMap源码，理解其数据结构与并发处理。  
@@ -83,7 +84,7 @@ final int hash(Object k) {
 > 1. 对字符串使用stringHash32单独计算hashCode  
 > 2. hash时增加hashSeed参数  
 ### put
-直接看代码，分三步
+流程分三步：  
 1. key=null, 直接去table[0]处理
 2. 计算key的hash、在数组中的index。遍历对应数组位置链表中元素，equals则替换旧值
 3. 不存在旧值则addEntry  
@@ -282,6 +283,14 @@ public ConcurrentHashMap(int initialCapacity,
 }
 ```
 ### put
+
+大致流程：  
+
+1. 根据key hashCode定位到Segment，如果空则初始化Segment
+2. 获取目标Segment的ReentrantLock锁
+3. put操作，遍历链表，这里与HashMap类似。可能会触发扩容
+4. 释放锁
+
 根据key的hashCode定位到Segment后，在槽内进行put操作
 ```java
 /**
