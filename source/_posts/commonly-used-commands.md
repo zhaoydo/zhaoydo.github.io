@@ -7,7 +7,7 @@ tags:
 
 # 日常使用
 
-```shell
+```bash
 # 统计字符在文件内出现次数
 cat cps-info.2019-08-13* |grep "字符" |wc -l
 # 子文件及文件夹占磁盘大小
@@ -28,7 +28,7 @@ top -Hp -PID
 
 # JVM相关
 
-```shell
+```bash
 # jstack日志
 jstack -l [pid] > xx.log 
 # 导出未回收的对象
