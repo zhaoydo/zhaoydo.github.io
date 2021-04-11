@@ -29,17 +29,29 @@ Java应用，通过JDBC访问数据库
 以分支事务执行：update product set name = 'GTS' where name = 'TXC'; 为例
 ##### 一阶段
 1. 解析sql得到类型：update、表：product、条件：name='TXC'
+
 2. 根据条件查询到预期被修改的数据，作为beforeImage（假设id=1）
+
 3. 执行sql，更新name
+
 4. 根据beforeImage中的id，查询更新后的记录afterImage
+
 5. 将业务sql、beforeImage、afterImage组成一条回滚记录，插入到undolog中
+
 6. 提交本地事务前，向TC注册分支，获取produc表中，id=1的全局锁
+
 7. 本地事务提交（业务数据以及undolog）
+
 8. 将事务提交结果上报给TC
   如果TC分支事务一阶段都成功，则执行二阶段提交。 有失败的，二阶段回滚    
+
+  
 ##### 二阶段-提交
 9. 收到TC的提交请求，放入异步队列执行、并立即响应TC
+
 10. 异步队列删除undolog。释放全局锁是不是异步的？没找到文档说明  
+
+    
 ##### 二阶段-回滚
 9. 收到TC的分支回滚请求，开启本地事务
 10. 通过XID和BranchId定位到undolog
