@@ -116,3 +116,59 @@ id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered
 6. Impossible WHERE where条件互斥，一定查不到时，例如where id=1 and id=2
 7. select tables optimized away 没有group by的情况下，对于MIN/MAX优化，可以提前计算
 8. distinct 对distinct操作优化，找到第一个就停止
+
+## Mysql/INNODB中的锁
+
+### 乐观锁/ 悲观锁
+
+#### 乐观锁
+
+对资源操作的时候乐观锁不会“锁”住资源，其他线程仍然可以操作，如果期间其他线程修改了资源，乐观锁会修改失败。  
+
+例如对数据进行修改时用price、stock、version等字段来进行一个CAS操作  
+
+```sql
+update xxx set value=xxx,version=xxx where id=xxx and version=${oldVersion}
+```
+
+#### 悲观锁
+
+悲观锁使用的时候会锁住资源，其他线程不能修改资源。 悲观锁有两种，共享锁和排它锁
+
+##### 共享锁
+
+共享锁也叫read lock。多个线程可以并行读取资源，但是不能对资源进行修改（获取资源上的排他锁），直到共享锁都释放掉
+
+```sql
+select xxx form xxx where id=xxx lock in share mode
+```
+
+
+
+##### 排它锁
+
+也叫write lock。加锁后其他线程不能读取和修改。直到排它锁释放掉
+
+```sql
+select xxx from xx where id=xxx for update
+```
+
+对于一些修改操作，会自动加上排它锁，update、delete、insert这些
+
+### 行锁/表锁
+
+对于上面的共享锁和排它锁，如果where没有命中索引，则走表锁，命中索引走行锁。  
+
+可以手动加表锁：  
+
+```sql
+# 锁所有表，例如在做主从的时候，锁定主库
+flush tables with read lock
+# 解锁 释放当前会话锁定的所有表
+unlock tables
+# 特定表加锁
+flush tables table_name with read lock
+lock tables table_name read/write
+
+```
+
