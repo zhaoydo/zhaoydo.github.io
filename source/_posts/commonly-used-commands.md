@@ -14,6 +14,8 @@ tags:
 cat cps-info.2019-08-13* |grep "字符" |wc -l
 # 子文件及文件夹占磁盘大小
 du -h --max-depth=1
+# 
+ll -Art | tail -n 10
 # catalina.out日志置空
 cat /dev/null > catalina.out
 # 查看日志前后
@@ -26,6 +28,8 @@ top -H
 # 查看进程线程数
 ps -o nlwp -PID
 top -Hp -PID
+# 查看服务器版本
+cat /etc/redhat-release
 ```
 
 # JVM相关
