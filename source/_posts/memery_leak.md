@@ -1,9 +1,8 @@
 ---
-title: Font导致堆外内存泄露排查解决
+title: 线上一次堆外内存泄露排查解决
 date: 2021-05-26 19:50:13
 tags:
 ---
-## 起因
 周六收到服务器告警，线上一台32G服务器的内存占用90%+，远远超出JVM设置的内存-Xmx8192m   
 top命令查看线上进程信息，发现一个java进程占用内存达到29G
 <!--more-->
@@ -16,7 +15,7 @@ jstat -gc <pid> 2000
 ```
 {% asset_img jstat.png 图2 image %}
 
-看到堆中新生代分配了2.59G、老年代5.59G，metaspace 355M，并且各区都没有用满，考虑是堆外直接内存溢出。  
+看到堆中新生代分配了2.59G、老年代5.59G，metaspace 355M，并且各区都没有用满，考虑是堆外直接内存泄露。  
 
 使用pmap命令输出进程内存映射到文件
 ```
@@ -60,7 +59,7 @@ Graphics2D gs = bimg.createGraphics();
 gs.setFont(afont.deriveFont(Font.PLAIN, new AffineTransform(10, 0, 0, 10, 10, 10)));
 gs.drawString("This is font load test", 0, 0);//这里造成了内存分配后没有被回收掉
 ```
-在[JDK-7074159 : run out of memory](https://bugs.java.com/bugdatabase/view_bug.do?bug_id=7074159)中报告了此bug，直到2020-04-07在JDK8_8u281中才被修复
+在[JDK-7074159 : run out of memory](https://bugs.java.com/bugdatabase/view_bug.do?bug_id=7074159)中报告了此bug，直到JDK8_8u281版本中才被修复，我们生产服务器使用的JDK版本是JDK8_8u181。
 {% asset_img bugfix.png 图2 image %}
 快速定位此类问题：  
 输出jvm中FontScaler对象的个数
@@ -75,7 +74,7 @@ jmap -histo <pid> | grep FontScaler
 1. 先查看JVM内存使用情况
 2. 使用pmap、smaps查看进程物理内存情况
 3. 使用gdb工具dump可疑的内存块
-4. 分析内存dump信息，找出与业务代码关联的信息，定位到代码
+4. 分析内存dump信息，找出与业务代码关联的信息，定位到相关代码
 5. 善用搜索引擎
 
 参考：
