@@ -1,10 +1,10 @@
 ---
-title: ELK日志收集部署
+title: ELK+Filebeat实现日志收集
 date: 2021-09-24 20:39:00
 tags: 运维
 ---
 ## 为什么用ELK
-当前公司项目部署在十几台服务器上。 通过tail、grep等命令直接去每台服务器查日志很不方便。给开发团队每个成员维护日志查询账号也很麻烦。 希望能有一套几种的日志查询系统，方便开发人员查询日志，定位问题，也方便运维对异常日志进行监控。
+当前公司项目部署在十几台服务器上。 通过tail、grep等命令直接去每台服务器查日志很不方便。给开发团队每个成员维护日志查询账号也很麻烦。 希望能有一套集中的日志系统，方便开发人员查询日志，定位问题，也方便运维对异常日志进行监控。
 
 ## ELK简介
 ELK是三个开源软件的缩写，Elasticsearch , Logstash, Kibana， 除此之外也用到了Filebeat。  
@@ -87,6 +87,19 @@ output {
 
 ### 应用服务器安装Filebeat
 
+服务器系统为CentOS7，[参考官网yum方式安装](https://www.elastic.co/guide/en/beats/filebeat/current/setup-repositories.html),很简单  
 
+修改filebeat.yml
 
-## 踩过的坑
+```shell
+
+```
+
+## 遇到的问题
+
+### 选型时走的弯路
+
+1. logback->logstash->elasticsearch：使用springboot+logback直接将日志通过tcp输出到logstash。这种方式会实时将日志通过tcp传输到logstash，依赖于logstash服务器的吞吐量、可用性。也会拖慢应用的执行
+2. logback->rabbitmq->logstash->elasticsearch: 加了一层rabbitmqmq，让logstash可以异步处理日志。仍然会拖慢应用的执行速度，日志量大的时候发现JVM中输出日志到MQ的BlockingQueue中挤压了许多日志。造成堆内存过大
+
+最开始不用filebeat的原因是认为每台应用服务器部署filebeat太麻烦，但是最终还是使用了filebeat->logstash->elasticsearch的方式。后面会考虑加一层kafka（filebeat不支持rabbitmq）,应用部署用docker（维护一套开发环境配置，部署弹性扩容都方便）。
