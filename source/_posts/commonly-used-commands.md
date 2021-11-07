@@ -37,8 +37,8 @@ cat /etc/redhat-release
 ```bash
 # jstack日志
 jstack -l [pid] > xx.log 
-# 导出未回收的对象
-jmap -histo [pid] > gc.log
+# 导出未回收的对象(根据第三列内存大小排序)
+jmap -histo [pid] | sort -n -k3 > gc.log
 # 导出当前堆情况
 jmap -dump:format=b,file=xxx.bin [pid]
 # 查看gc情况 每5000ms刷新
