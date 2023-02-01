@@ -6,7 +6,7 @@ tags:
 ---
 
 以okhttp_3.14.x作为示例代码，是最后一个java版本，后续版本使用了kotlin封装了部分实现。
-
+<!--more-->
 # 请求流程
 
 ## 同步请求
@@ -493,7 +493,7 @@ AsyncCall继承了Runnable，线程池执行的是AsyncCall.run()方法,调用�
 
 ## 连接池
 
-#### http1.x/http2
+### http1.x/http2
 
 客户端发起http请求到服务端，要经历DNS解析、TCP三次握手等一些列复杂过程才与服务器建立连接, 建立连接的过程开销很大。访问个普通网页，请求几十个甚至更多资源是很正常的。为了性能，大部分客户端对http请求做了连接复用。
 
@@ -893,11 +893,7 @@ public final class Dispatcher {
 ```
 
 注意maxRequests和executorService()这两个参数。 默认初始化maxRequests=64，线程池数量无上限，实际请求数/线程数取两者最小值。两个参数哪个大对性能无影响。
-
-
-
 # okhttp结构
-
 ![](https://img-blog.csdnimg.cn/20210630103500293.png)
 
 懒得画了，网上找了个，很简单。
