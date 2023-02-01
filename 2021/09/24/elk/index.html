@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="为什么用ELK当前公司项目部署在十几台服务器上。 通过tail、grep等命令直接去每台服务器查日志很不方便。给开发团队每个成员维护日志查询账号也很麻烦。 希望能有一套集中的日志系统，方便开发人员查询日志，定位问题，也方便运维对异常日志进行监控。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ELK+Filebeat实现日志收集">
+<meta property="og:url" content="http://yoursite.com/2021/09/24/elk/index.html">
+<meta property="og:site_name" content="Zhaoyd&#39;s Notes">
+<meta property="og:description" content="为什么用ELK当前公司项目部署在十几台服务器上。 通过tail、grep等命令直接去每台服务器查日志很不方便。给开发团队每个成员维护日志查询账号也很麻烦。 希望能有一套集中的日志系统，方便开发人员查询日志，定位问题，也方便运维对异常日志进行监控。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/09/24/elk/elk.png">
+<meta property="article:published_time" content="2021-09-24T12:39:00.000Z">
+<meta property="article:modified_time" content="2021-09-26T11:00:44.986Z">
+<meta property="article:author" content="zhaoyd">
+<meta property="article:tag" content="运维">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/09/24/elk/elk.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/09/24/elk/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>ELK+Filebeat实现日志收集 | Zhaoyd's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zhaoyd's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/09/24/elk/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="zhaoyd">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zhaoyd's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ELK+Filebeat实现日志收集
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-09-24 20:39:00" itemprop="dateCreated datePublished" datetime="2021-09-24T20:39:00+08:00">2021-09-24</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-09-26 19:00:44" itemprop="dateModified" datetime="2021-09-26T19:00:44+08:00">2021-09-26</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="为什么用ELK"><a href="#为什么用ELK" class="headerlink" title="为什么用ELK"></a>为什么用ELK</h2><p>当前公司项目部署在十几台服务器上。 通过tail、grep等命令直接去每台服务器查日志很不方便。给开发团队每个成员维护日志查询账号也很麻烦。 希望能有一套集中的日志系统，方便开发人员查询日志，定位问题，也方便运维对异常日志进行监控。</p>
+<a id="more"></a>
+
+<h2 id="ELK简介"><a href="#ELK简介" class="headerlink" title="ELK简介"></a>ELK简介</h2><p>ELK是三个开源软件的缩写，Elasticsearch , Logstash, Kibana， 除此之外也用到了Filebeat。  </p>
+<ol>
+<li>Elasticsearch 搜索和分析引擎，用来存储日志  </li>
+<li>Logstash 服务器端出具处理管道，用来转换数据存到Elasticsearch中  </li>
+<li>Kibana 可视化界面，展示Elasticsearch中的数据  </li>
+<li>Filebeat 日志采集器，部署在每台应用服务器上  </li>
+</ol>
+<p>整体结构如下：</p>
+<img src="/2021/09/24/elk/elk.png" class="" title="elk image">
+
+
+
+<h2 id="安装与部署"><a href="#安装与部署" class="headerlink" title="安装与部署"></a>安装与部署</h2><h3 id="docker安装ELK镜像"><a href="#docker安装ELK镜像" class="headerlink" title="docker安装ELK镜像"></a>docker安装ELK镜像</h3><h4 id="ELK镜像安装启动"><a href="#ELK镜像安装启动" class="headerlink" title="ELK镜像安装启动"></a>ELK镜像安装启动</h4><p>elk单独安装都比较复杂，所以直接用docker pull了一个别人安装好的镜像  </p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 获取最新镜像</span></span><br><span class="line">docker pull sebp/elk</span><br><span class="line"><span class="meta">#</span><span class="bash"> 启动镜像 d5e175b50ad8为镜像id, 服务器32G内存这里为es指定了16G堆内存</span></span><br><span class="line">docker run -d -e ES_JAVA_OPTS="-Xms16G -Xmx16G" -p 5601:5601 -p 5044:5044 -p 9200:9200 -p 9300:9300 -it --restart=always --name elk d5e175b50ad8</span><br></pre></td></tr></table></figure>
+<p>如果出现报错,说明是es启动时要求max_map_count最低为262144</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]</span><br></pre></td></tr></table></figure>
+<p>修改此项配置，并写入配置文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"><span class="comment"># 执行</span></span></span><br><span class="line">sysctl -w vm.max_map_count=262144</span><br></pre></td></tr></table></figure>
+<p>编辑/etc/sysctl.conf，加入：vm.max_map_count=262144</p>
+<h4 id="修改配置文件"><a href="#修改配置文件" class="headerlink" title="修改配置文件"></a>修改配置文件</h4><p>elk容器运行后，进入容器修改logstash配置文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"><span class="comment"># 进入容器</span></span></span><br><span class="line">docker exec -it elk /bin/bash</span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="comment"># 编辑配置文件</span></span></span><br><span class="line">vim /etc/logstash/conf.d/02-beats-input.conf</span><br></pre></td></tr></table></figure>
+<p>注意/etc/logstash/conf.d/下还有其他配置文件，如果不用删掉即可。<br>配置内容如下，主要是从filebeat中接收日志，格式化后输出到es中</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 监听5044端口接收filebeat的日志信息</span></span><br><span class="line">input &#123;  </span><br><span class="line">  beats &#123;</span><br><span class="line">    port =&gt; "5044"</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#</span><span class="bash"> 日志过滤处理</span></span><br><span class="line">filter &#123;</span><br><span class="line"><span class="meta">  #</span><span class="bash"> 将message中信息的各个字段格式化出来，这个配置与应用服务器上输出的日志格式相匹配</span></span><br><span class="line">  grok &#123;</span><br><span class="line">    match =&gt; ["message", "%&#123;TIMESTAMP_ISO8601:timestamp&#125;%&#123;SPACE&#125;\[%&#123;NOTSPACE:thread&#125;\]%&#123;SPACE&#125;\[%&#123;NOTSPACE:file&#125;\]%&#123;SPACE&#125;%&#123;LOGLEVEL:level&#125;%&#123;SPACE&#125;%&#123;NOTSPACE:logger&#125;%&#123;SPACE&#125;-%&#123;SPACE&#125;%&#123;GREEDYDATA:msg&#125;"]</span><br><span class="line">  &#125;</span><br><span class="line"><span class="meta">  #</span><span class="bash"> 将日志中timestamp转换成@timestamp，方便es按照时间保存</span></span><br><span class="line">  date &#123;</span><br><span class="line">    match =&gt; ["timestamp", "yyyy-MM-dd HH:mm:ss.SSS"]</span><br><span class="line">    target =&gt; "@timestamp"</span><br><span class="line">    timezone =&gt; "Asia/Shanghai"</span><br><span class="line">    remove_field =&gt; ["timestamp"]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#</span><span class="bash"> 日志输出到ES，根据日志信息中的log_source不同环境输出到不同index中,这里分为<span class="built_in">test</span>、prod</span></span><br><span class="line">output &#123;</span><br><span class="line">  if [log_source] == "test" &#123;</span><br><span class="line">    elasticsearch &#123;</span><br><span class="line">      hosts =&gt; ["localhost:9200"]</span><br><span class="line">      index =&gt; "xxx-test-log-%&#123;+YYYY.MM.dd&#125;"</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  if [log_source] == "prod" &#123;</span><br><span class="line">    elasticsearch &#123;</span><br><span class="line">      hosts =&gt; ["localhost:9200"]</span><br><span class="line">      index =&gt; "xxx-prod-log-%&#123;+YYYY.MM.dd&#125;"</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="应用服务器安装Filebeat"><a href="#应用服务器安装Filebeat" class="headerlink" title="应用服务器安装Filebeat"></a>应用服务器安装Filebeat</h3><p>服务器系统为CentOS7，<a href="https://www.elastic.co/guide/en/beats/filebeat/current/setup-repositories.html" target="_blank" rel="noopener">参考官网yum方式安装</a>,很简单  </p>
+<p>修改filebeat.yml</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">filebeat.inputs:</span><br><span class="line"></span><br><span class="line">- type: log</span><br><span class="line">  enabled: true</span><br><span class="line">  paths:</span><br><span class="line">    - /opt/path1/xxx*.log # 监控的日志文件</span><br><span class="line">  fields:</span><br><span class="line">    log_source: test # 用于logstash处理时不同环境输出es不同index</span><br><span class="line">    app: xxx</span><br><span class="line">  fields_under_root: true</span><br><span class="line">  multiline.pattern: ^(\d&#123;4&#125;|\d&#123;2&#125;)\-(\d&#123;2&#125;|[a-zA-Z]&#123;3&#125;)\-(\d&#123;2&#125;|\d&#123;4&#125;)# 多行日志识别日期开头为一条日志</span><br><span class="line">  multiline.negate: true</span><br><span class="line">  multiline.match: after</span><br><span class="line">- type: log</span><br><span class="line">  enabled: true</span><br><span class="line">  paths:</span><br><span class="line">    - /opt/xxx/xxx*.log</span><br><span class="line">  fields:</span><br><span class="line">    log_source: test</span><br><span class="line">    app: xxx</span><br><span class="line">  fields_under_root: true</span><br><span class="line">  multiline.pattern: ^(\d&#123;4&#125;|\d&#123;2&#125;)\-(\d&#123;2&#125;|[a-zA-Z]&#123;3&#125;)\-(\d&#123;2&#125;|\d&#123;4&#125;)</span><br><span class="line">  multiline.negate: true</span><br><span class="line">  multiline.match: after</span><br><span class="line"></span><br><span class="line">output.logstash:</span><br><span class="line">  hosts: ["0.0.0.0:5044","0.0.0.0:5044"]# 输出到两台logstash</span><br></pre></td></tr></table></figure>
+
+<h2 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h2><h3 id="选型时走的弯路"><a href="#选型时走的弯路" class="headerlink" title="选型时走的弯路"></a>选型时走的弯路</h3><ol>
+<li>logback-&gt;logstash-&gt;elasticsearch：使用springboot+logback直接将日志通过tcp输出到logstash。这种方式会实时将日志通过tcp传输到logstash，依赖于logstash服务器的吞吐量、可用性。也会拖慢应用的执行</li>
+<li>logback-&gt;rabbitmq-&gt;logstash-&gt;elasticsearch: 加了一层rabbitmqmq，让logstash可以异步处理日志。仍然会拖慢应用的执行速度，日志量大的时候发现JVM中输出日志到MQ的BlockingQueue中挤压了许多日志。造成堆内存过大</li>
+</ol>
+<p>最开始不用filebeat的原因是认为每台应用服务器部署filebeat太麻烦，但是最终还是使用了filebeat-&gt;logstash-&gt;elasticsearch的方式。后面会考虑加一层kafka（filebeat不支持rabbitmq）,应用部署用docker（维护一套开发环境配置，部署弹性扩容都方便）。</p>
+<h3 id="遇到的问题-1"><a href="#遇到的问题-1" class="headerlink" title="遇到的问题"></a>遇到的问题</h3><ol>
+<li>filebeat启动后不久就报错：too many open files.。 原因是第一次同步filebeat同时打开的日志文件太多，linux默认一个进程最多打开1024个文件，参考<a href="https://wiki.eryajf.net/pages/5016.html" target="_blank" rel="noopener">ELK笔记</a>改下配置即可</li>
+<li>elasticsearch、logstash默认配置处理慢，GC频繁，每天100G+日志压不住。修改配置、JVM参数优化即可</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%BF%90%E7%BB%B4/" rel="tag"># 运维</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/09/24/aqs/" rel="prev" title="读AQS源码">
+      <i class="fa fa-chevron-left"></i> 读AQS源码
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/02/22/sharding/" rel="next" title="sharding">
+      sharding <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么用ELK"><span class="nav-number">1.</span> <span class="nav-text">为什么用ELK</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ELK简介"><span class="nav-number">2.</span> <span class="nav-text">ELK简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装与部署"><span class="nav-number">3.</span> <span class="nav-text">安装与部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#docker安装ELK镜像"><span class="nav-number">3.1.</span> <span class="nav-text">docker安装ELK镜像</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ELK镜像安装启动"><span class="nav-number">3.1.1.</span> <span class="nav-text">ELK镜像安装启动</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#修改配置文件"><span class="nav-number">3.1.2.</span> <span class="nav-text">修改配置文件</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用服务器安装Filebeat"><span class="nav-number">3.2.</span> <span class="nav-text">应用服务器安装Filebeat</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#遇到的问题"><span class="nav-number">4.</span> <span class="nav-text">遇到的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#选型时走的弯路"><span class="nav-number">4.1.</span> <span class="nav-text">选型时走的弯路</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#遇到的问题-1"><span class="nav-number">4.2.</span> <span class="nav-text">遇到的问题</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">zhaoyd</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhaoyd</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

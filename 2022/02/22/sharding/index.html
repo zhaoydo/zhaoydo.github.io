@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="本文只讨论水平分表，垂直分表属于业务重构问题  为什么分表参考下图，t_user表根据业务字段id拆分，奇数放入table1，偶数放入table2 通过一个或多个字段&#x2F;规则将数据分散到多个数据库、数据表中，使得业务数据突破单表性能瓶颈。   为什么效率高：    减少单表数据、索引大小，提高读写效率 开多个线程并发读写分片数据（十个线程分别从一千万表中读 VS 一个线程从一亿表中读） 提前缩">
+<meta property="og:type" content="article">
+<meta property="og:title" content="sharding">
+<meta property="og:url" content="http://yoursite.com/2022/02/22/sharding/index.html">
+<meta property="og:site_name" content="Zhaoyd&#39;s Notes">
+<meta property="og:description" content="本文只讨论水平分表，垂直分表属于业务重构问题  为什么分表参考下图，t_user表根据业务字段id拆分，奇数放入table1，偶数放入table2 通过一个或多个字段&#x2F;规则将数据分散到多个数据库、数据表中，使得业务数据突破单表性能瓶颈。   为什么效率高：    减少单表数据、索引大小，提高读写效率 开多个线程并发读写分片数据（十个线程分别从一千万表中读 VS 一个线程从一亿表中读） 提前缩">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://shardingsphere.apache.org/document/current/img/sharding/horizontal_sharding.png">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-0ca4a4125b1cbda69cfa972b1e568ffb_720w.jpg">
+<meta property="og:image" content="http://zentao.epean.cn/zentao/file-read-11179.png">
+<meta property="og:image" content="http://zentao.epean.cn/zentao/file-read-11180.png">
+<meta property="article:published_time" content="2022-02-22T09:38:42.232Z">
+<meta property="article:modified_time" content="2022-05-30T04:29:00.032Z">
+<meta property="article:author" content="zhaoyd">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://shardingsphere.apache.org/document/current/img/sharding/horizontal_sharding.png">
+
+<link rel="canonical" href="http://yoursite.com/2022/02/22/sharding/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>sharding | Zhaoyd's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zhaoyd's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2022/02/22/sharding/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="zhaoyd">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zhaoyd's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          sharding
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-02-22 17:38:42" itemprop="dateCreated datePublished" datetime="2022-02-22T17:38:42+08:00">2022-02-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-30 12:29:00" itemprop="dateModified" datetime="2022-05-30T12:29:00+08:00">2022-05-30</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<hr>
+<blockquote>
+<p>本文只讨论水平分表，垂直分表属于业务重构问题</p>
+</blockquote>
+<h1 id="为什么分表"><a href="#为什么分表" class="headerlink" title="为什么分表"></a>为什么分表</h1><p>参考下图，t_user表根据业务字段id拆分，奇数放入table1，偶数放入table2<br><img src="https://shardingsphere.apache.org/document/current/img/sharding/horizontal_sharding.png" alt="水平分片"></p>
+<p>通过一个或多个字段/规则将数据分散到多个数据库、数据表中，使得业务数据突破单表性能瓶颈。  </p>
+<p>为什么效率高：  </p>
+<ol>
+<li>减少单表数据、索引大小，提高读写效率</li>
+<li>开多个线程并发读写分片数据（十个线程分别从一千万表中读 VS 一个线程从一亿表中读）</li>
+<li>提前缩小读写范围，sql条件中有id（分片列），只需要读写对应分片表即可</li>
+</ol>
+<p>带来的问题：  </p>
+<ol>
+<li>分表后表结构维护，数据运维</li>
+<li>多线程写、跨库写时事务问题</li>
+<li>复杂sql，insert into select,分表字段列update、limit、order by、group by某些情况下不能正确执行</li>
+</ol>
+<blockquote>
+<p>举个例子 TODO</p>
+</blockquote>
+<h1 id="技术选型"><a href="#技术选型" class="headerlink" title="技术选型"></a>技术选型</h1><table>
+<thead>
+<tr>
+<th></th>
+<th>ShardingJDBC</th>
+<th>Mycat</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>分库</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>分表</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>实现方式</td>
+<td>解析改写SQL</td>
+<td>中间层代理</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>损耗低</td>
+<td>损耗略高</td>
+</tr>
+<tr>
+<td>使用</td>
+<td>引用jar包</td>
+<td>需单独安装管理端</td>
+</tr>
+<tr>
+<td>社区</td>
+<td>star 15.1k Apache-2.0许可</td>
+<td>star 9.2k GPL-2.0许可</td>
+</tr>
+<tr>
+<td>官网</td>
+<td><a href="https://shardingsphere.apache.org/" target="_blank" rel="noopener">https://shardingsphere.apache.org/</a></td>
+<td><a href="http://mycat.org.cn/" target="_blank" rel="noopener">http://mycat.org.cn/</a></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>选择ShardingJDBC， 分表性能损耗低，实现方式容易理解，无需单独安装服务端。 11月刚发布了5.0正式版</p>
+<blockquote>
+<p>ShardingJDBC4.0后，官方将ShardingJDBC、ShardingProxy统一为ShardingSphere</p>
+</blockquote>
+<h1 id="ShardingJDBC"><a href="#ShardingJDBC" class="headerlink" title="ShardingJDBC"></a>ShardingJDBC</h1><h2 id="内置分片算法"><a href="#内置分片算法" class="headerlink" title="内置分片算法"></a>内置分片算法</h2><table>
+<thead>
+<tr>
+<th align="left"><em>SPI 名称</em></th>
+<th align="left"><em>详细说明</em></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">ShardingAlgorithm</td>
+<td align="left">分片算法</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="left"><em>已知实现类</em></th>
+<th align="left"><em>详细说明</em></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">BoundaryBasedRangeShardingAlgorithm</td>
+<td align="left">基于分片边界的范围分片算法</td>
+</tr>
+<tr>
+<td align="left">VolumeBasedRangeShardingAlgorithm</td>
+<td align="left">基于分片容量的范围分片算法</td>
+</tr>
+<tr>
+<td align="left">ComplexInlineShardingAlgorithm</td>
+<td align="left">基于行表达式的复合分片算法</td>
+</tr>
+<tr>
+<td align="left">AutoIntervalShardingAlgorithm</td>
+<td align="left">基于可变时间范围的分片算法</td>
+</tr>
+<tr>
+<td align="left">ClassBasedShardingAlgorithm</td>
+<td align="left">基于自定义类的分片算法</td>
+</tr>
+<tr>
+<td align="left">HintInlineShardingAlgorithm</td>
+<td align="left">基于行表达式的Hint分片算法</td>
+</tr>
+<tr>
+<td align="left">IntervalShardingAlgorithm</td>
+<td align="left">基于固定时间范围的分片算法</td>
+</tr>
+<tr>
+<td align="left">HashModShardingAlgorithm</td>
+<td align="left">基于哈希取模的分片算法</td>
+</tr>
+<tr>
+<td align="left">InlineShardingAlgorithm</td>
+<td align="left">基于行表达式的分片算法</td>
+</tr>
+<tr>
+<td align="left">ModShardingAlgorithm</td>
+<td align="left">基于取模的分片算法</td>
+</tr>
+</tbody></table>
+<p>官方提供了几种常用的分片算法，分为三大类</p>
+<h3 id="精确分片算法"><a href="#精确分片算法" class="headerlink" title="精确分片算法"></a>精确分片算法</h3><p>根据分片key，直接计算出数据表，一般用于非范围分片key，buyerId，orderId等</p>
+<h4 id="InlineShardingAlgorithm"><a href="#InlineShardingAlgorithm" class="headerlink" title="InlineShardingAlgorithm"></a>InlineShardingAlgorithm</h4><p>根据表达式t_order_$-&gt;{order_id % 4}，计算分片表</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">inlineShardingAlgorithm = <span class="keyword">new</span> InlineShardingAlgorithm();</span><br><span class="line">        inlineShardingAlgorithm.getProps().setProperty(<span class="string">"algorithm-expression"</span>, <span class="string">"t_order_$-&gt;&#123;order_id % 4&#125;"</span>);</span><br><span class="line">        inlineShardingAlgorithm.getProps().setProperty(<span class="string">"allow-range-query-with-inline-sharding"</span>, <span class="string">"true"</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="ComplexInlineShardingAlgorithm"><a href="#ComplexInlineShardingAlgorithm" class="headerlink" title="ComplexInlineShardingAlgorithm"></a>ComplexInlineShardingAlgorithm</h4><p>多个分片key  </p>
+<p>t_order表根据type、order列分表，分片表为t_order_0_0、t_order_0_1、t_order_1_0、t_order_1_1</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">complexInlineShardingAlgorithm = <span class="keyword">new</span> ComplexInlineShardingAlgorithm();</span><br><span class="line">complexInlineShardingAlgorithm.getProps().setProperty(<span class="string">"algorithm-expression"</span>, <span class="string">"t_order_$&#123;type % 2&#125;_$&#123;order_id % 2&#125;"</span>);</span><br><span class="line">complexInlineShardingAlgorithm.getProps().setProperty(<span class="string">"sharding-columns"</span>, <span class="string">"type,order_id"</span>);</span><br><span class="line">complexInlineShardingAlgorithm.init();</span><br></pre></td></tr></table></figure>
+
+<h4 id="HashModShardingAlgorithm"><a href="#HashModShardingAlgorithm" class="headerlink" title="HashModShardingAlgorithm"></a>HashModShardingAlgorithm</h4><p>将t_order根据buyer_id(varchar 20) hash后分为四片，  key.hashCode()%4, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">shardingAlgorithm &#x3D; new HashModShardingAlgorithm();</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(&quot;sharding-count&quot;, &quot;4&quot;);</span><br></pre></td></tr></table></figure>
+
+<h4 id="HintInlineShardingAlgorithm"><a href="#HintInlineShardingAlgorithm" class="headerlink" title="HintInlineShardingAlgorithm"></a>HintInlineShardingAlgorithm</h4><p>强制指定要查询的表，不根据SQL解析。例如下面代码查询表为t_order_0%4</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">hintInlineShardingAlgorithm = <span class="keyword">new</span> HintInlineShardingAlgorithm();</span><br><span class="line">Properties props = <span class="keyword">new</span> Properties();</span><br><span class="line">props.setProperty(<span class="string">"algorithm-expression"</span>, <span class="string">"t_order_$-&gt;&#123;value % 4&#125;"</span>);</span><br><span class="line">hintInlineShardingAlgorithm.setProps(props);</span><br><span class="line">hintInlineShardingAlgorithm.init();</span><br><span class="line"><span class="comment">//手动指定分片</span></span><br><span class="line"><span class="keyword">final</span> HintManager hintManager = HintManager.getInstance();</span><br><span class="line">hintManager.addTableShardingValue(<span class="string">"t_order"</span>, <span class="number">0</span>);</span><br><span class="line">orderService.get(<span class="number">122343L</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="范围分片算法"><a href="#范围分片算法" class="headerlink" title="范围分片算法"></a>范围分片算法</h3><p>根据设置的分片key范围，定位数据表。datetime、id等</p>
+<h4 id="BoundaryBasedRangeShardingAlgorithm"><a href="#BoundaryBasedRangeShardingAlgorithm" class="headerlink" title="BoundaryBasedRangeShardingAlgorithm"></a>BoundaryBasedRangeShardingAlgorithm</h4><p>自定义分片边界算法</p>
+<p>-∞~10000  table0  </p>
+<p>10000~20000 table1  </p>
+<p>20000~30000 table2    </p>
+<p>30000~∞ table3  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">BoundaryBasedRangeShardingAlgorithm shardingAlgorithm = <span class="keyword">new</span>           BoundaryBasedRangeShardingAlgorithm();</span><br><span class="line">    shardingAlgorithm.getProps().setProperty(<span class="string">"sharding-ranges"</span>, <span class="string">"10000,20000,30000"</span>);</span><br><span class="line">    shardingAlgorithm.init();</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="容量分片算法"><a href="#容量分片算法" class="headerlink" title="容量分片算法"></a>容量分片算法</h3><p>其实就是范围分片的变种，分片规则以容量配置，一般用于有序并知道预期范围分片key</p>
+<h4 id="VolumeBasedRangeShardingAlgorithm"><a href="#VolumeBasedRangeShardingAlgorithm" class="headerlink" title="VolumeBasedRangeShardingAlgorithm"></a>VolumeBasedRangeShardingAlgorithm</h4><p>自定义分片容量</p>
+<p>分片key预期在0-100万，将此区间内数据均匀分片，每片最多10万数据</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">VolumeBasedRangeShardingAlgorithm shardingAlgorithm = <span class="keyword">new</span> VolumeBasedRangeShardingAlgorithm();</span><br><span class="line">shardingAlgorithm.getProps().setProperty(<span class="string">"range-lower"</span>, <span class="string">"0"</span>);</span><br><span class="line">shardingAlgorithm.getProps().setProperty(<span class="string">"range-upper"</span>, <span class="string">"1000000"</span>);</span><br><span class="line">shardingAlgorithm.getProps().setProperty(<span class="string">"sharding-volume"</span>, <span class="string">"100000"</span>);</span><br><span class="line">shardingAlgorithm.init();</span><br></pre></td></tr></table></figure>
+
+<h4 id="AutoIntervalShardingAlgorithm"><a href="#AutoIntervalShardingAlgorithm" class="headerlink" title="AutoIntervalShardingAlgorithm"></a>AutoIntervalShardingAlgorithm</h4><p>根据分片key时间均分  </p>
+<p>t_order表 根据order_time（预期20年-21年），每天分一片，分片表为t_order_0，t_order_1…t_order_366</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">shardingAlgorithm = <span class="keyword">new</span> AutoIntervalShardingAlgorithm();</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(<span class="string">"datetime-lower"</span>, <span class="string">"2020-01-01 00:00:00"</span>);</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(<span class="string">"datetime-upper"</span>, <span class="string">"2021-01-01 00:00:16"</span>);</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(<span class="string">"sharding-seconds"</span>, String.valueOf(<span class="number">3600</span>*<span class="number">24</span>));</span><br><span class="line">        shardingAlgorithm.init();</span><br></pre></td></tr></table></figure>
+
+<h4 id="IntervalShardingAlgorithm"><a href="#IntervalShardingAlgorithm" class="headerlink" title="IntervalShardingAlgorithm"></a>IntervalShardingAlgorithm</h4><p>基于时间单位分片  </p>
+<p>t_order 根据order_time，每月分一片，分片表为t_order_0,t_order_1，t_order_2…t_order_59</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">shardingAlgorithmByMonth = <span class="keyword">new</span> IntervalShardingAlgorithm();</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"datetime-pattern"</span>, <span class="string">"yyyy-MM-dd HH:mm:ss"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"datetime-lower"</span>, <span class="string">"2016-01-01 00:00:00"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"datetime-upper"</span>, <span class="string">"2021-12-31 00:00:00"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"sharding-suffix-pattern"</span>, <span class="string">"yyyyMM"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"datetime-interval-amount"</span>, <span class="string">"1"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.getProps().setProperty(<span class="string">"datetime-interval-unit"</span>, <span class="string">"Months"</span>);</span><br><span class="line">       shardingAlgorithmByMonth.init();</span><br></pre></td></tr></table></figure>
+
+<h3 id="自定义算法"><a href="#自定义算法" class="headerlink" title="自定义算法"></a>自定义算法</h3><p>自己实现分片规则</p>
+<h4 id="ClassBasedShardingAlgorithm"><a href="#ClassBasedShardingAlgorithm" class="headerlink" title="ClassBasedShardingAlgorithm"></a>ClassBasedShardingAlgorithm</h4><p>自定义类分片算法</p>
+<p>最灵活的分片算法，任意实现业务逻辑</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">shardingAlgorithm = <span class="keyword">new</span> ClassBasedShardingAlgorithm();</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(<span class="string">"strategy"</span>, <span class="string">"standard"</span>);</span><br><span class="line">        shardingAlgorithm.getProps().setProperty(<span class="string">"algorithmClassName"</span>, ClassBasedStandardShardingAlgorithmFixture<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        shardingAlgorithm.init();</span><br></pre></td></tr></table></figure>
+
+<h1 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h1><h2 id="项目配置"><a href="#项目配置" class="headerlink" title="项目配置"></a>项目配置</h2><p>application-dev.properties</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># 直接看项目配置</span><br></pre></td></tr></table></figure>
+
+<p>TradeMybatisConfigurer.java 定义主数据源</p>
+<h2 id="动态数据源切换"><a href="#动态数据源切换" class="headerlink" title="动态数据源切换"></a>动态数据源切换</h2><p>将分表数据源定义为主数据源，对于某些SQL，ShardingJDBC不支持，这种情况需要我们手动切换为普通数据源（druid）</p>
+<p>使用Spring提供的AbstractRoutingDataSource实现数据源切换</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 动态事务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> zhaoyd</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@date</span> 2021-12-27</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DynamicDataSource</span> <span class="keyword">extends</span> <span class="title">AbstractRoutingDataSource</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> InheritableThreadLocal&lt;DataSourceKeyEnum&gt; CONTEXT_HOLDER = <span class="keyword">new</span> InheritableThreadLocal&lt;&gt;();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 初始化数据源</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> defaultTargetDataSource</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> targetDataSources</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">DynamicDataSource</span><span class="params">(DataSource defaultTargetDataSource, Map&lt;Object, Object&gt; targetDataSources)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.setDefaultTargetDataSource(defaultTargetDataSource);</span><br><span class="line">        <span class="keyword">super</span>.setTargetDataSources(targetDataSources);</span><br><span class="line">        <span class="keyword">super</span>.afterPropertiesSet();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Object <span class="title">determineCurrentLookupKey</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> getDataSourceKey();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">setDataSourceKey</span><span class="params">(DataSourceKeyEnum dataSource)</span> </span>&#123;</span><br><span class="line">        CONTEXT_HOLDER.set(dataSource);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> DataSourceKeyEnum <span class="title">getDataSourceKey</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> CONTEXT_HOLDER.get();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">clearDataSourceKey</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        CONTEXT_HOLDER.remove();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>自定义数据源切换注解@EnableDataSource(DataSourceKeyEnum)，通过AOP拦截下注解。很简单</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 合并所有订单</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@EnableDataSource</span>(DataSourceKeyEnum.TRADE)<span class="comment">//表示使用非分片的druid数据源</span></span><br><span class="line">    <span class="meta">@RequestMapping</span>(<span class="string">"mergeallorder.html"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> JsonDataDto <span class="title">mergeAllOrder</span><span class="params">(PlatOrderMergeSearchDto queryBean, HttpServletRequest request)</span> <span class="keyword">throws</span> BaseAppException</span>&#123;</span><br><span class="line">        Boolean isIgnoreLogis = BooleanUtils.toBoolean(request.getParameter(<span class="string">"isIgnoreLogis"</span>));</span><br><span class="line">        AssertUtils.notNull(isIgnoreLogis);</span><br><span class="line">        List&lt;String&gt; mergeResult = mergeOrderBusiService.mergeAllOrder(queryBean, isIgnoreLogis);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> JsonDataDto(mergeResult);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="分布式ID"><a href="#分布式ID" class="headerlink" title="分布式ID"></a>分布式ID</h1><p>分表后，无法使用单表自增ID，需要使用分布式ID方案来生成唯一ID  </p>
+<p>分布式ID方案有三种</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>示例</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UUID</td>
+<td>91c606f6-d87f-4dd1-80b2-414b6ac38ad0</td>
+<td>无单点问题，实现最简单</td>
+<td>无序，32位字符串长，可读性差</td>
+</tr>
+<tr>
+<td>号段模式</td>
+<td>211790001-211800001（Long）</td>
+<td>效率高，趋势递增，和自增ID基本一致</td>
+<td>依赖单点生成，实现复杂(需解决并发)</td>
+</tr>
+<tr>
+<td>雪花算法</td>
+<td><img src="https://pic4.zhimg.com/80/v2-0ca4a4125b1cbda69cfa972b1e568ffb_720w.jpg" alt=""></td>
+<td>无单点问题，效率高，趋势递增有可读性</td>
+<td>64位太长，需要解决时钟回拨问题</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>时钟回拨： 服务器每隔一段时间会从网络时钟服务器校时，如果某次校时，由15:01退回到15:00.这时候ID就会重复。  </p>
+<p>大部分解决时钟回拨的方法是服务将历史一段时间内（例如一小时）每个毫秒的最大自增序号保存起来</p>
+</blockquote>
+<p>项目采用的是号段模式，主要考虑到下面几点  </p>
+<ol>
+<li>雪花算法需要对每台应用单独维护一个workerID，无论是配置文件直接配置还是通过redis、zookeeper注册都很麻烦，<a href="https://blog.csdn.net/u013465194/article/details/83385198" target="_blank" rel="noopener">看这个</a></li>
+<li>UUID需要修改ID数据类型，而且是无序的。插入数据时会重构索引B+树（回忆下白泽上树老师的mysql分享），占用空间大</li>
+<li>号段模式生成ID，在数据格式，长度和原来自增一致，唯一缺点时不能保证严格的自增（两台cps申请号段分别为100-200,200-300，会出现id=250的create_time 小于id=150的情况）</li>
+</ol>
+<h3 id="号段模式实现"><a href="#号段模式实现" class="headerlink" title="号段模式实现"></a>号段模式实现</h3><ol>
+<li>数据库维护一张号段表，每台服务根据biz_tag取一定长度的号段，放在服务内号段缓存中</li>
+<li>每次数据插入，先从服务内号段缓存取一个id，如果缓存用完，则从号段表中初再初始化一批号段</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>biz_tag</th>
+<th>next_id</th>
+<th>step</th>
+<th>remark</th>
+<th>update_time</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>prod_sync_p_shopee</td>
+<td>211790001</td>
+<td>10000</td>
+<td>shopee同步父表</td>
+<td>2022-1-6 22:26</td>
+</tr>
+<tr>
+<td>prod_sync_s_shopee</td>
+<td>750310001</td>
+<td>10000</td>
+<td>shopee同步子表</td>
+<td>2022-1-6 23:18</td>
+</tr>
+<tr>
+<td>test</td>
+<td>1</td>
+<td>100</td>
+<td>test</td>
+<td>2021-11-24 15:33</td>
+</tr>
+</tbody></table>
+<p>给实体类加上注解即可，实现细节：SegmentIdGenerator.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ProdSyncPShopee</span> <span class="keyword">extends</span> <span class="title">ShardingBaseBean</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Id</span></span><br><span class="line">    <span class="meta">@KeySql</span>(genId = SegmentIdGenerator<span class="class">.<span class="keyword">class</span>)</span></span><br><span class="line"><span class="class">    <span class="title">private</span> <span class="title">Long</span> <span class="title">id</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="事务处理"><a href="#事务处理" class="headerlink" title="事务处理"></a>事务处理</h2><blockquote>
+<p> 思考一个问题，前面说分表时以多线程执行每个分片SQL，事务如何处理</p>
+</blockquote>
+<p>ShardingJDBC默认使用本地事务，支持绝大部分单应用场景下跨库和非跨库事务。<a href="https://shardingsphere.apache.org/document/current/cn/features/transaction/use-norms/" target="_blank" rel="noopener">官网说明</a></p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>事务</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>普通sql</td>
+<td>支持</td>
+<td>单个事务连接commit or rollback</td>
+</tr>
+<tr>
+<td>分表SQL</td>
+<td>支持</td>
+<td>多个事务连接commit or rollback，不能处理commit阶段异常(数据库宕机、网络中断)</td>
+</tr>
+<tr>
+<td>分库SQL</td>
+<td>支持</td>
+<td>多个事务连接commit or rollback，不能处理commit阶段异常(数据库宕机、网络中断)</td>
+</tr>
+</tbody></table>
+<p>源码中本地事务的实现如下</p>
+<blockquote>
+<p>对prod_sync_p_shopee表根据id更新，测试库分了三张表，开启三条数据库连接并发执行update语句</p>
+</blockquote>
+<p>提交事务，遍历当前事务所有的事务Connection，依次执行commit()</p>
+<p><img src="http://zentao.epean.cn/zentao/file-read-11179.png" alt="commit"></p>
+<p>异常时回滚事务，遍历当前事务打开的所有事务Connection，依次执行rollback()回滚数据</p>
+<p><img src="http://zentao.epean.cn/zentao/file-read-11180.png" alt="rollback"></p>
+<h1 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h1><h2 id="提前初始化陷阱"><a href="#提前初始化陷阱" class="headerlink" title="提前初始化陷阱"></a>提前初始化陷阱</h2><p>提前初始化导致事务失效</p>
+<p>shiroFilter引入了UserService。 导致bean在BeanPostProcessor之前被初始化，AOP基于BeanPostProcessor实现事务导致相关的bean不生效</p>
+<p>详细看这个：<a href="https://www.jianshu.com/p/b1209cd3686d" target="_blank" rel="noopener">引入shiro后userService事务不生效原因</a></p>
+<h2 id="分表关联笛卡尔积"><a href="#分表关联笛卡尔积" class="headerlink" title="分表关联笛卡尔积"></a>分表关联笛卡尔积</h2><p>父子表10*10 </p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> t_parent <span class="keyword">as</span> p <span class="keyword">inner</span> <span class="keyword">join</span> t_detail <span class="keyword">as</span> d <span class="keyword">on</span> d.p_id=p.id</span><br></pre></td></tr></table></figure>
+
+<p>如果父子表都有分表，会关联t_parent0-9 * t_detail0_9 执行100条sql语句</p>
+<p>解决方案是绑定父子表分片，这样t_parent_0至于t_detail_0 连接查询，执行10条sql语句</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.shardingsphere.rules.sharding.binding-tables[0]&#x3D;t_parent,t_detail</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这个问题在生产上造成了两周系统卡顿，没仔细阅读官网文档</p>
+</blockquote>
+<h2 id="特殊SQL支持"><a href="#特殊SQL支持" class="headerlink" title="特殊SQL支持"></a>特殊SQL支持</h2><p>特殊的sql不支持，类似下面这些</p>
+<p>insert into select * from xxx;</p>
+<p>left join 分表table</p>
+<p>非分表table相关sql用动态数据源注解切换为普通数据源。分表table改写sql用其他方式实现</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>上线分表后有两个问题</p>
+<ol>
+<li>未做父子表关联绑定，查询笛卡尔积，导致生产系统两周数据库高负载。父子分片绑定后解决</li>
+<li>部分sql不支持，报错。 统一排查报错原因一个个改</li>
+</ol>
+<p>分表看起来香，落地难。要解决数据源、事务、分布式id、特殊sql处理这些问题，还不太成熟。如果从0设计一个系统，会倾向于分布式数据库。</p>
+<h1 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h1><p><a href="https://shardingsphere.apache.org/document/5.0.0/en/overview/" target="_blank" rel="noopener">ShardingSphere官网文档</a></p>
+<p><a href="https://www.cnblogs.com/wuer888/p/14531046.html" target="_blank" rel="noopener">ShardingJDBC分片算法和解析流程</a></p>
+<p><a href="https://tech.meituan.com/2019/03/07/open-source-project-leaf.html" target="_blank" rel="noopener">美团分布式ID生成服务</a></p>
+<p><a href="https://tech.meituan.com/2016/11/18/dianping-order-db-sharding.html" target="_blank" rel="noopener">大众点评订单系统分库分表实践</a></p>
+<p><a href="https://www.cnblogs.com/qlqwjy/p/13423021.html" target="_blank" rel="noopener">基于AbstractRoutingDataSource实现动态数据源</a></p>
+<p><a href="https://www.jianshu.com/p/b1209cd3686d" target="_blank" rel="noopener">引入shiro后userService事务不生效原因</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/09/24/elk/" rel="prev" title="ELK+Filebeat实现日志收集">
+      <i class="fa fa-chevron-left"></i> ELK+Filebeat实现日志收集
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/06/28/okhttp/" rel="next" title="okhttp源码解析">
+      okhttp源码解析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#为什么分表"><span class="nav-number">1.</span> <span class="nav-text">为什么分表</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#技术选型"><span class="nav-number">2.</span> <span class="nav-text">技术选型</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ShardingJDBC"><span class="nav-number">3.</span> <span class="nav-text">ShardingJDBC</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内置分片算法"><span class="nav-number">3.1.</span> <span class="nav-text">内置分片算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#精确分片算法"><span class="nav-number">3.1.1.</span> <span class="nav-text">精确分片算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#InlineShardingAlgorithm"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">InlineShardingAlgorithm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ComplexInlineShardingAlgorithm"><span class="nav-number">3.1.1.2.</span> <span class="nav-text">ComplexInlineShardingAlgorithm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HashModShardingAlgorithm"><span class="nav-number">3.1.1.3.</span> <span class="nav-text">HashModShardingAlgorithm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HintInlineShardingAlgorithm"><span class="nav-number">3.1.1.4.</span> <span class="nav-text">HintInlineShardingAlgorithm</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#范围分片算法"><span class="nav-number">3.1.2.</span> <span class="nav-text">范围分片算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#BoundaryBasedRangeShardingAlgorithm"><span class="nav-number">3.1.2.1.</span> <span class="nav-text">BoundaryBasedRangeShardingAlgorithm</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容量分片算法"><span class="nav-number">3.1.3.</span> <span class="nav-text">容量分片算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#VolumeBasedRangeShardingAlgorithm"><span class="nav-number">3.1.3.1.</span> <span class="nav-text">VolumeBasedRangeShardingAlgorithm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AutoIntervalShardingAlgorithm"><span class="nav-number">3.1.3.2.</span> <span class="nav-text">AutoIntervalShardingAlgorithm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#IntervalShardingAlgorithm"><span class="nav-number">3.1.3.3.</span> <span class="nav-text">IntervalShardingAlgorithm</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自定义算法"><span class="nav-number">3.1.4.</span> <span class="nav-text">自定义算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ClassBasedShardingAlgorithm"><span class="nav-number">3.1.4.1.</span> <span class="nav-text">ClassBasedShardingAlgorithm</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用"><span class="nav-number">4.</span> <span class="nav-text">使用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#项目配置"><span class="nav-number">4.1.</span> <span class="nav-text">项目配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#动态数据源切换"><span class="nav-number">4.2.</span> <span class="nav-text">动态数据源切换</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分布式ID"><span class="nav-number">5.</span> <span class="nav-text">分布式ID</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#号段模式实现"><span class="nav-number">5.0.1.</span> <span class="nav-text">号段模式实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务处理"><span class="nav-number">5.1.</span> <span class="nav-text">事务处理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#遇到的问题"><span class="nav-number">6.</span> <span class="nav-text">遇到的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#提前初始化陷阱"><span class="nav-number">6.1.</span> <span class="nav-text">提前初始化陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分表关联笛卡尔积"><span class="nav-number">6.2.</span> <span class="nav-text">分表关联笛卡尔积</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#特殊SQL支持"><span class="nav-number">6.3.</span> <span class="nav-text">特殊SQL支持</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结"><span class="nav-number">7.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考资料"><span class="nav-number">8.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">zhaoyd</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhaoyd</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

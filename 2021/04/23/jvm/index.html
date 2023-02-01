@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="《深入理解JAVA虚拟机》部分概念整理，内存结构、垃圾收集、内存分配。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="理解JVM概念">
+<meta property="og:url" content="http://yoursite.com/2021/04/23/jvm/index.html">
+<meta property="og:site_name" content="Zhaoyd&#39;s Notes">
+<meta property="og:description" content="《深入理解JAVA虚拟机》部分概念整理，内存结构、垃圾收集、内存分配。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/04/23/jvm/1.png">
+<meta property="article:published_time" content="2021-04-23T06:00:00.000Z">
+<meta property="article:modified_time" content="2021-05-25T03:47:49.317Z">
+<meta property="article:author" content="zhaoyd">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/04/23/jvm/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/04/23/jvm/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>理解JVM概念 | Zhaoyd's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zhaoyd's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/04/23/jvm/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="zhaoyd">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zhaoyd's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          理解JVM概念
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-04-23 14:00:00" itemprop="dateCreated datePublished" datetime="2021-04-23T14:00:00+08:00">2021-04-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-05-25 11:47:49" itemprop="dateModified" datetime="2021-05-25T11:47:49+08:00">2021-05-25</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>《深入理解JAVA虚拟机》部分概念整理，内存结构、垃圾收集、内存分配。</p>
+<a id="more"></a>
+
+<h1 id="JVM内存区域"><a href="#JVM内存区域" class="headerlink" title="JVM内存区域"></a>JVM内存区域</h1><h2 id="运行时数据区"><a href="#运行时数据区" class="headerlink" title="运行时数据区"></a>运行时数据区</h2><img src="/2021/04/23/jvm/1.png" class="" title="图1 image">
+
+<ol>
+<li>方法区：线程共享，存储已被虚拟机加载的类信息、常量、静态变量</li>
+<li>堆：线程共享，虚拟机内存中最大的一块，存放对象实例</li>
+<li>虚拟机栈：线程私有，生命周期与线程相同，描述Java方法执行的内存模型。每个方法在执行的同时会创建一个栈帧，存储：局部变量表、操作数栈、动态链接、方法出口等信息。每个方法从调用到执行完成，对应着一个栈帧在虚拟机中入栈-出栈的过程</li>
+<li>本地方法栈：线程私有、与本地方法栈相似，只是描述的是Native方法的执行过程</li>
+<li>程序计数器：线程私有，记录当前线程执行代码执行到哪里了。可以看做是线程所执行字节码行号指示器</li>
+</ol>
+<h2 id="内存溢出和栈溢出"><a href="#内存溢出和栈溢出" class="headerlink" title="内存溢出和栈溢出"></a>内存溢出和栈溢出</h2><ol>
+<li><p>堆溢出：修改参数-Xmx限制最大堆内存，循环创建对象，导致OOM。java.lang.OutOfMemeryError:Java heap space</p>
+</li>
+<li><p>虚拟机栈/本地方法栈溢出： 有两种情况</p>
+<p>2.1 修改参数-Xss减少每个栈内存的容量，递归调用方法，线程栈深度过大导致栈溢出。导致StackOverflowError</p>
+<p>2.2 修改参数-Xss增大每个栈内存的容量，循环创建子线程调用方法，会导致没有足够的内存再创建新线程。报OutOfMemeryError:unable to create new native thread  </p>
+<p>因此要根据实际情况设置-Xss参数，过小导致栈深度小、过大导致可运行的线程总数小</p>
+</li>
+<li><p>方法区和运行时常量池溢出：运行时常量池属于方法区一部分。修改参数-XXPermSize限制永久代（JDK8中是元空间）大小，循环调用String.intern()将不同的字符串存入运行时常量池，会导致OutOfMemeryError：PermGen space</p>
+</li>
+<li><p>直接内存溢出：指定参数-XX:MaxDirectMemorySize(如果不设置默认与-Xmx一样)，直接循环中通过Unsafe申请内存导致内存溢出。导致OutOfMemeryError，如果没有看到明显的OOM异常原因，OOM之后Dump文件比较小，考虑是直接内存溢出</p>
+</li>
+</ol>
+<h1 id="垃圾收集"><a href="#垃圾收集" class="headerlink" title="垃圾收集"></a>垃圾收集</h1><p>垃圾收集需要关注三点：</p>
+<ol>
+<li>哪些内存需要回收</li>
+<li>什么时候需要回收</li>
+<li>如何回收</li>
+</ol>
+<h2 id="判断对象是否可以回收"><a href="#判断对象是否可以回收" class="headerlink" title="判断对象是否可以回收"></a>判断对象是否可以回收</h2><p>判断对象是“存活”还是“死去”（不能再被任何地方使用）</p>
+<h3 id="引用计数法"><a href="#引用计数法" class="headerlink" title="引用计数法"></a>引用计数法</h3><p>给对象添加一个引用计数器：有一个地方引用它时，计数器+1，引用失效时计数器-1，如果计数器==0说明对象不能在被使用了，可以被回收掉。  </p>
+<p>优点：效率高。   </p>
+<p>缺点：无法解决循环引用的问题，即A对象中属性引用B，B对象中属性引用A，AB之外再无其他引用，这样的对象计数器始终不为0，永远不会被回收掉</p>
+<h3 id="可达性分析"><a href="#可达性分析" class="headerlink" title="可达性分析"></a>可达性分析</h3><p>主流语言（Java、C#）用可达性分析算法来判定对象是否存活。通一系列被称为“GC Roots”的对象作为起始节点，从这些节点向下搜索，当一个对象到GC Roots中没有任何连接时，认为是不可达的，可以被回收掉。  </p>
+<p>Java中GC Roots对象有以下几种：  </p>
+<ol>
+<li>虚拟机栈中的变量引用对象</li>
+<li>方法区中静态变量引用对象</li>
+<li>方法区中final常量引用对象</li>
+<li>本地方法栈中引用对象</li>
+</ol>
+<h3 id="Java中四种引用"><a href="#Java中四种引用" class="headerlink" title="Java中四种引用"></a>Java中四种引用</h3><ol>
+<li>强引用：直接=引用的对象</li>
+<li>软引用：在将要发生内存溢出异常值前，把软引用对象进行二次回收（内存不足时才回收）</li>
+<li>弱引用：只要发生垃圾回收，就会被回收掉</li>
+<li>虚引用：最弱的引用关系，甚至无法通过虚引用获得这个对象实例。只是为了在对象被回收时通过ReferenceQueue来处理一些事情</li>
+</ol>
+<h2 id="垃圾收集算法"><a href="#垃圾收集算法" class="headerlink" title="垃圾收集算法"></a>垃圾收集算法</h2><h3 id="标记-清除算法"><a href="#标记-清除算法" class="headerlink" title="标记-清除算法"></a>标记-清除算法</h3><p>在一块连续的内存区域中先标记所有需要回收的对象、标记完成后统一清除掉。  </p>
+<p>优点：简单  </p>
+<p>缺点：标记、清除两个动作效率都不高。并且会产生大量不连续的内存碎片，如果再分配较大的对象时可能无法找到足够的连续的内存区域  </p>
+<h3 id="复制算法"><a href="#复制算法" class="headerlink" title="复制算法"></a>复制算法</h3><p>将内存区域分为2块，每次用其中的1块。回收时将区域内存活的对象复制到另一块内存区域中，然后整个清除原来的内存区域。</p>
+<p>优点：简单、效率高，无内存碎片。 缺点：运行时内存只能应用一半  </p>
+<p>新生代垃圾回收时，剩下存活对象比较少，适合用复制算法来回收。实际使用时不是将内存划分为两部分，而是分为一块较大的Eden区和两块较小的Survivor区。  HostSpot虚拟机中默认E : S1 : S2内存大小为8 : 1 : 1。每次只使用E、S1两块内存，垃圾回收时，将E、S1中存活的对象复制到S2上，清掉E、S1内存，然后继续使用E、S2。 这样内存只浪费了10%</p>
+<h3 id="标记-整理算法"><a href="#标记-整理算法" class="headerlink" title="标记-整理算法"></a>标记-整理算法</h3><p>标记存活的对象，然后将存活的对象都向内存一端移动，然后清除掉边界外的内存。  </p>
+<p>老年代垃圾回收时，由于可能存活的对象比较多，不适合复制算法，所以采用这种回收算法</p>
+<h3 id="分代收集算法"><a href="#分代收集算法" class="headerlink" title="分代收集算法"></a>分代收集算法</h3><p>主流商用虚拟机垃圾收集器都采用分代收集的算法，将内存分为新生代、老年代。 新生代用“复制算法”回收，老年代用“标记-清除”/“标记-整理算法“回收</p>
+<h1 id="内存分配与回收策略"><a href="#内存分配与回收策略" class="headerlink" title="内存分配与回收策略"></a>内存分配与回收策略</h1><ol>
+<li><p>新内存直接分配到新生代Eden区中。如果Eden区中没有足够的空间，虚拟机将发起一次MinorGC</p>
+</li>
+<li><p>大对象直接进入老年代。例如很长的字符串及数组，对象内存超过一个临界值时将直接分配到老年代</p>
+</li>
+<li><p>长期存活的对象进入老年代。新生代对象每次MinorGC时Age+1，超过某个值后将进入到老年代</p>
+</li>
+<li><p>动态年龄判定。 实际并不一定按照年龄临界值来进入老年代，如果新生代S区内相同年龄对象占用空间大于S区一半，将&gt;=该Age的对象直接进入老年代。</p>
+</li>
+<li><p>空间分配担保。新生代MinorGC发生之前，检查一下老年代连续可用内存空间是否大于新生代所有对象总空间(极端情况新生代对象都存活，S区无法容纳的对象直接进入老年代。要保证老年代有足够的空间）</p>
+<p>5.1 如果空间足够，空间分配担保成功，则正常进行MinorGC</p>
+<p>5.2 如果空间不够，空间分配担保失败。</p>
+<p>​    如果允许失败（HandlePromotionFailure=true）:检查老年代连续可用空间是否大于历次晋升到老年代对象平均大小。如果大于则进行MinorGC，如果小于或者MinorGC失败，则进行FullGC</p>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/04/11/distributed_transaction/" rel="prev" title="四种分布式事务解决方案">
+      <i class="fa fa-chevron-left"></i> 四种分布式事务解决方案
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/04/25/jvm-g1/" rel="next" title="G1垃圾收集器">
+      G1垃圾收集器 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM内存区域"><span class="nav-number">1.</span> <span class="nav-text">JVM内存区域</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#运行时数据区"><span class="nav-number">1.1.</span> <span class="nav-text">运行时数据区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内存溢出和栈溢出"><span class="nav-number">1.2.</span> <span class="nav-text">内存溢出和栈溢出</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#垃圾收集"><span class="nav-number">2.</span> <span class="nav-text">垃圾收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#判断对象是否可以回收"><span class="nav-number">2.1.</span> <span class="nav-text">判断对象是否可以回收</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#引用计数法"><span class="nav-number">2.1.1.</span> <span class="nav-text">引用计数法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#可达性分析"><span class="nav-number">2.1.2.</span> <span class="nav-text">可达性分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Java中四种引用"><span class="nav-number">2.1.3.</span> <span class="nav-text">Java中四种引用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#垃圾收集算法"><span class="nav-number">2.2.</span> <span class="nav-text">垃圾收集算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#标记-清除算法"><span class="nav-number">2.2.1.</span> <span class="nav-text">标记-清除算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制算法"><span class="nav-number">2.2.2.</span> <span class="nav-text">复制算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#标记-整理算法"><span class="nav-number">2.2.3.</span> <span class="nav-text">标记-整理算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分代收集算法"><span class="nav-number">2.2.4.</span> <span class="nav-text">分代收集算法</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#内存分配与回收策略"><span class="nav-number">3.</span> <span class="nav-text">内存分配与回收策略</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">zhaoyd</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhaoyd</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

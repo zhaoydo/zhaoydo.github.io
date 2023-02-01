@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="四种事务模式AT个人理解：一阶段各个分支提交本地事务、如果有任一分支事务一阶段失败，则二阶段各分支回滚数据，否则标记AT事务成功（二阶段成功）。 通过本地数据库事务配合实现，中间要考虑脏读、脏写的问题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="四种分布式事务解决方案">
+<meta property="og:url" content="http://yoursite.com/2021/04/11/distributed_transaction/index.html">
+<meta property="og:site_name" content="Zhaoyd&#39;s Notes">
+<meta property="og:description" content="四种事务模式AT个人理解：一阶段各个分支提交本地事务、如果有任一分支事务一阶段失败，则二阶段各分支回滚数据，否则标记AT事务成功（二阶段成功）。 通过本地数据库事务配合实现，中间要考虑脏读、脏写的问题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://seata.io/img/seata_tcc-1.png">
+<meta property="og:image" content="https://img.alicdn.com/tfs/TB1Y2kuw7T2gK0jSZFkXXcIQFXa-445-444.png">
+<meta property="og:image" content="https://img.alicdn.com/tfs/TB1hSpccIVl614jSZKPXXaGjpXa-1330-924.png">
+<meta property="article:published_time" content="2021-04-11T07:40:00.000Z">
+<meta property="article:modified_time" content="2021-05-25T03:47:49.307Z">
+<meta property="article:author" content="zhaoyd">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://seata.io/img/seata_tcc-1.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/04/11/distributed_transaction/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>四种分布式事务解决方案 | Zhaoyd's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zhaoyd's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/04/11/distributed_transaction/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="zhaoyd">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zhaoyd's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          四种分布式事务解决方案
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-04-11 15:40:00" itemprop="dateCreated datePublished" datetime="2021-04-11T15:40:00+08:00">2021-04-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-05-25 11:47:49" itemprop="dateModified" datetime="2021-05-25T11:47:49+08:00">2021-05-25</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="四种事务模式"><a href="#四种事务模式" class="headerlink" title="四种事务模式"></a>四种事务模式</h2><h3 id="AT"><a href="#AT" class="headerlink" title="AT"></a>AT</h3><p>个人理解：一阶段各个分支提交本地事务、如果有任一分支事务一阶段失败，则二阶段各分支回滚数据，否则标记AT事务成功（二阶段成功）。 通过本地数据库事务配合实现，中间要考虑脏读、脏写的问题  </p>
+<a id="more"></a>
+
+<h4 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h4><p>支持本地ACID事务的关系型数据库<br>Java应用，通过JDBC访问数据库  </p>
+<h4 id="整体机制"><a href="#整体机制" class="headerlink" title="整体机制"></a>整体机制</h4><p>两阶段提交的演变：  </p>
+<ol>
+<li>一阶段： 业务数据和回滚日志在一个本地事务中提交（提交前先获得一个全局锁），然后释放本地锁和连接资源</li>
+<li>二阶段：<ul>
+<li>提交异步化非常快速的完成（就是删除undolog）</li>
+<li>回滚通过一阶段的undolog完成</li>
+<li>并释放全局锁</li>
+</ul>
+</li>
+</ol>
+<p>理解两个概念：<br><strong>全局事务</strong>： 包括所有分支事务（分支事务包括一阶段和二阶段）<br><strong>全局锁</strong>： 是一个分支事务内要修改数据的锁，例如update一条记录，根据条件拿到更新数据的id，以表+id作为全局锁，防止分支事务二阶段回滚时，另外一个全局事务修改了数据导致脏写问题</p>
+<h4 id="执行流程"><a href="#执行流程" class="headerlink" title="执行流程"></a>执行流程</h4><p>以分支事务执行：update product set name = ‘GTS’ where name = ‘TXC’; 为例</p>
+<h5 id="一阶段"><a href="#一阶段" class="headerlink" title="一阶段"></a>一阶段</h5><ol>
+<li><p>解析sql得到类型：update、表：product、条件：name=’TXC’</p>
+</li>
+<li><p>根据条件查询到预期被修改的数据，作为beforeImage（假设id=1）</p>
+</li>
+<li><p>执行sql，更新name</p>
+</li>
+<li><p>根据beforeImage中的id，查询更新后的记录afterImage</p>
+</li>
+<li><p>将业务sql、beforeImage、afterImage组成一条回滚记录，插入到undolog中</p>
+</li>
+<li><p>提交本地事务前，向TC注册分支，获取produc表中，id=1的全局锁</p>
+</li>
+<li><p>本地事务提交（业务数据以及undolog）</p>
+</li>
+<li><p>将事务提交结果上报给TC<br>如果TC分支事务一阶段都成功，则执行二阶段提交。 有失败的，二阶段回滚    </p>
+</li>
+</ol>
+<h5 id="二阶段-提交"><a href="#二阶段-提交" class="headerlink" title="二阶段-提交"></a>二阶段-提交</h5><ol start="9">
+<li><p>收到TC的提交请求，放入异步队列执行、并立即响应TC</p>
+</li>
+<li><p>异步队列删除undolog。释放全局锁是不是异步的？没找到文档说明  </p>
+</li>
+</ol>
+<h5 id="二阶段-回滚"><a href="#二阶段-回滚" class="headerlink" title="二阶段-回滚"></a>二阶段-回滚</h5><ol start="9">
+<li>收到TC的分支回滚请求，开启本地事务</li>
+<li>通过XID和BranchId定位到undolog</li>
+<li>数据校验：拿undolog中afterImage数据与当前数据比较<ul>
+<li>如果一致，根据beforeImage与业务sql生成回滚sql</li>
+<li>如果不一致，根据配置的配置策略来处理</li>
+</ul>
+</li>
+<li>提交本地事务，将本地事务回滚结果上报给TC。释放分支事务的全局锁  </li>
+</ol>
+<h4 id="脏写的处理"><a href="#脏写的处理" class="headerlink" title="脏写的处理"></a>脏写的处理</h4><p>全局锁实现，全局事务会竞争全局锁，不会出现脏读问题。<br>对于全局事务和其他事务修改了一条数据，根据具体的配置策略处理：</p>
+<h4 id="脏读处理"><a href="#脏读处理" class="headerlink" title="脏读处理"></a>脏读处理</h4><p>Seata AT模式默认全局数据隔离级别为“读未提交”（及时本地数据库是“读已提交”or更高），不考虑脏读问题。  </p>
+<p>如果需要实现全局“读已提交”，seata通过预先代理执行“SELECT FOR UPDATE ”加锁</p>
+<h3 id="TCC"><a href="#TCC" class="headerlink" title="TCC"></a>TCC</h3><p>相对于AT模式，TCC不需要本地数据库事务的支持，自己实现prepare、commit、rollback的逻辑，很容易理解。  </p>
+<ul>
+<li>一阶段prepare：调用自己的prepare逻辑，做一些资源预留，保证commit能成功执行</li>
+<li>二阶段commit：调用自己的commit逻辑，执行实际的业务操作</li>
+<li>二阶段rollback：调用自己的rollback逻辑，补偿或释放资源<br><img src="http://seata.io/img/seata_tcc-1.png" alt="image"><br>TM(事务管理器):用来控制整个分布式事务的管理，发起全局事务的Begin/Commit/Rollback<br>RM(资源管理器):用来注册自己的分支事务，接受TC的Commit或者Rollback请求<h4 id="执行流程-1"><a href="#执行流程-1" class="headerlink" title="执行流程"></a>执行流程</h4>以“扣钱”场景为例，从账户中扣30元  </li>
+</ul>
+<ol>
+<li>一阶段prepare：检查余额是否充足，冻结30元，这一步来保证commit能成功</li>
+<li>二阶段commit：扣除一阶段锁定的30元</li>
+<li>二阶段rollback：释放prepare扣除的30元  <h4 id="TCC设计-允许空回滚"><a href="#TCC设计-允许空回滚" class="headerlink" title="TCC设计-允许空回滚"></a>TCC设计-允许空回滚</h4>空回滚：prepare未执行、rollback执行了。 一般是prepare接口丢包没有收到请求，事务触发了回滚，调用rollback方法。<br>解决方法： rollback方法执行时发现拿不到事务xid，至返回回滚成功<h4 id="TCC设计-防悬挂"><a href="#TCC设计-防悬挂" class="headerlink" title="TCC设计-防悬挂"></a>TCC设计-防悬挂</h4>悬挂：rollback比try先执行。 一般是prepare执行超时，事务管理器回滚，执行rollback后，prepare也执行成功了。 这时候rollback时认为事务未发生执行空回滚，然后prepare也执行了<br>解决方法:rollback空回滚时也生成事务xid，prepare执行前判断xid存在则不执行逻辑  <h4 id="TCC设计-幂等"><a href="#TCC设计-幂等" class="headerlink" title="TCC设计-幂等"></a>TCC设计-幂等</h4>幂等：网络拥堵或超时时，事务管理器重试操作，要保持幂等性<br>解决方案：通过xid和业务主键来判断，例如prepare前判断xid不为空</li>
+</ol>
+<h3 id="Saga"><a href="#Saga" class="headerlink" title="Saga"></a>Saga</h3><p>与TCC模式类似，业务方自己实现正向操作、补偿操作。因为没有prepare来锁定资源，会出现脏数据问题。<br><img src="https://img.alicdn.com/tfs/TB1Y2kuw7T2gK0jSZFkXXcIQFXa-445-444.png" alt="Saga"><br>适用场景：  </p>
+<ol>
+<li>业务流程长</li>
+<li>包含其他公司项目、遗留项目、其他语言开发的项目，无法提供TCC的三个接口  <h3 id="XA"><a href="#XA" class="headerlink" title="XA"></a>XA</h3>XA是X/Open DTP组织（X/Open DTP group）定义的两阶段提交协议，XA被许多数据库（如Oracle、DB2、SQL Server、MySQL）和中间件等工具(如CICS 和 Tuxedo)本地支持。<br>X/Open DTP模型（1994）包括应用程序（AP）、事务管理器（TM）、资源管理器（RM）。<br>XA接口函数由数据库厂商提供。XA规范的基础是两阶段提交协议2PC。  </li>
+</ol>
+<p>XA方式实现分布式事务，其实就是根据由数据库自身提供的XA强一致性方案来实现。</p>
+<h4 id="前提-1"><a href="#前提-1" class="headerlink" title="前提"></a>前提</h4><ul>
+<li>支持XA事务数据库</li>
+<li>Java应用，通过JDBC访问数据库<h4 id="整体结构"><a href="#整体结构" class="headerlink" title="整体结构"></a>整体结构</h4><img src="https://img.alicdn.com/tfs/TB1hSpccIVl614jSZKPXXaGjpXa-1330-924.png" alt="XA"><br>执行阶段：  <ul>
+<li>可回滚：业务SQL操作在XA分支中进行，由XA协议保证可回滚  </li>
+<li>持久化：XA分支完成后，执行XAprepare，由XA协议保证持久化<br>完成阶段：  </li>
+<li>分支提交：执行XA分支commit</li>
+<li>分支回滚：执行XA分支的rollback</li>
+</ul>
+</li>
+</ul>
+<h2 id="几种分布式事务模式对比"><a href="#几种分布式事务模式对比" class="headerlink" title="几种分布式事务模式对比"></a>几种分布式事务模式对比</h2><h3 id="AT-1"><a href="#AT-1" class="headerlink" title="AT"></a>AT</h3><p>优点：对业务代码无侵入，学习使用成本低<br>缺点：性能不高<br>适用于不希望对业务代码进行改造的场景</p>
+<h3 id="TCC-1"><a href="#TCC-1" class="headerlink" title="TCC"></a>TCC</h3><p>优点：自己实现prepare、commit、rollback不需要本地数据事务支持，性能高<br>缺点: 代码侵入性强<br>适用于核心系统对性能要求高的地方</p>
+<h3 id="Saga-1"><a href="#Saga-1" class="headerlink" title="Saga"></a>Saga</h3><p>优点：不需要像TCC一样prepare中锁资源、无锁、实现简单<br>缺点：会出现脏数据<br>适用于长流程下保证最终一致性，对接其他公司项目或者遗留项目等不能改造成TCC的场景</p>
+<h3 id="XA-1"><a href="#XA-1" class="headerlink" title="XA"></a>XA</h3><p>优点：基于数据库体用的XA协议实现，简单，数据强一致性<br>缺点：性能低<br>场景：几乎不使用</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="http://seata.io/zh-cn/docs/dev/mode/at-mode.html" target="_blank" rel="noopener">Seata官方文档</a><br><a href="https://www.jianshu.com/p/75217db81c99" target="_blank" rel="noopener">分布式事务的4种模式</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/04/11/mysql-base/" rel="prev" title="MySQL基础知识总结">
+      <i class="fa fa-chevron-left"></i> MySQL基础知识总结
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/04/23/jvm/" rel="next" title="理解JVM概念">
+      理解JVM概念 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#四种事务模式"><span class="nav-number">1.</span> <span class="nav-text">四种事务模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#AT"><span class="nav-number">1.1.</span> <span class="nav-text">AT</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#前提"><span class="nav-number">1.1.1.</span> <span class="nav-text">前提</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#整体机制"><span class="nav-number">1.1.2.</span> <span class="nav-text">整体机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#执行流程"><span class="nav-number">1.1.3.</span> <span class="nav-text">执行流程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#一阶段"><span class="nav-number">1.1.3.1.</span> <span class="nav-text">一阶段</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#二阶段-提交"><span class="nav-number">1.1.3.2.</span> <span class="nav-text">二阶段-提交</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#二阶段-回滚"><span class="nav-number">1.1.3.3.</span> <span class="nav-text">二阶段-回滚</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#脏写的处理"><span class="nav-number">1.1.4.</span> <span class="nav-text">脏写的处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#脏读处理"><span class="nav-number">1.1.5.</span> <span class="nav-text">脏读处理</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCC"><span class="nav-number">1.2.</span> <span class="nav-text">TCC</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#执行流程-1"><span class="nav-number">1.2.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TCC设计-允许空回滚"><span class="nav-number">1.2.2.</span> <span class="nav-text">TCC设计-允许空回滚</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TCC设计-防悬挂"><span class="nav-number">1.2.3.</span> <span class="nav-text">TCC设计-防悬挂</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TCC设计-幂等"><span class="nav-number">1.2.4.</span> <span class="nav-text">TCC设计-幂等</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Saga"><span class="nav-number">1.3.</span> <span class="nav-text">Saga</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#XA"><span class="nav-number">1.4.</span> <span class="nav-text">XA</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#前提-1"><span class="nav-number">1.4.1.</span> <span class="nav-text">前提</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#整体结构"><span class="nav-number">1.4.2.</span> <span class="nav-text">整体结构</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几种分布式事务模式对比"><span class="nav-number">2.</span> <span class="nav-text">几种分布式事务模式对比</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#AT-1"><span class="nav-number">2.1.</span> <span class="nav-text">AT</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCC-1"><span class="nav-number">2.2.</span> <span class="nav-text">TCC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Saga-1"><span class="nav-number">2.3.</span> <span class="nav-text">Saga</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#XA-1"><span class="nav-number">2.4.</span> <span class="nav-text">XA</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">zhaoyd</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhaoyd</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

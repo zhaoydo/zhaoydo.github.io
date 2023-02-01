@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="记录日常用的命令，备忘">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一些常用命令">
+<meta property="og:url" content="http://yoursite.com/2018/11/01/commonly-used-commands/index.html">
+<meta property="og:site_name" content="Zhaoyd&#39;s Notes">
+<meta property="og:description" content="记录日常用的命令，备忘">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-11-01T11:33:13.000Z">
+<meta property="article:modified_time" content="2021-10-11T05:45:06.393Z">
+<meta property="article:author" content="zhaoyd">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2018/11/01/commonly-used-commands/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>一些常用命令 | Zhaoyd's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zhaoyd's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/01/commonly-used-commands/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="zhaoyd">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zhaoyd's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          一些常用命令
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-11-01 19:33:13" itemprop="dateCreated datePublished" datetime="2018-11-01T19:33:13+08:00">2018-11-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-10-11 13:45:06" itemprop="dateModified" datetime="2021-10-11T13:45:06+08:00">2021-10-11</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>记录日常用的命令，备忘</p>
+<a id="more"></a>
+
+<h1 id="日常使用"><a href="#日常使用" class="headerlink" title="日常使用"></a>日常使用</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 统计字符在文件内出现次数</span></span><br><span class="line">cat cps-info.2019-08-13* |grep <span class="string">"字符"</span> |wc -l</span><br><span class="line"><span class="comment"># 子文件及文件夹占磁盘大小</span></span><br><span class="line">du -h --max-depth=1</span><br><span class="line"><span class="comment"># </span></span><br><span class="line">ll -Art | tail -n 10</span><br><span class="line"><span class="comment"># catalina.out日志置空</span></span><br><span class="line">cat /dev/null &gt; catalina.out</span><br><span class="line"><span class="comment"># 查看日志前后</span></span><br><span class="line">grep -C 5 foo file <span class="comment"># 显示file文件中匹配foo字串那行以及上下5行</span></span><br><span class="line">grep -B 5 foo file <span class="comment"># 显示foo及前5行</span></span><br><span class="line">grep -A 5 foo file <span class="comment"># 显示foo及后5行</span></span><br><span class="line"><span class="comment"># 查看线程总数</span></span><br><span class="line">ps -eLf | wc -l</span><br><span class="line">top -H</span><br><span class="line"><span class="comment"># 查看进程线程数</span></span><br><span class="line">ps -o nlwp -PID</span><br><span class="line">top -Hp -PID</span><br><span class="line"><span class="comment"># 查看服务器版本</span></span><br><span class="line">cat /etc/redhat-release</span><br></pre></td></tr></table></figure>
+
+<h1 id="JVM相关"><a href="#JVM相关" class="headerlink" title="JVM相关"></a>JVM相关</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># jstack日志</span></span><br><span class="line">jstack -l [pid] &gt; xx.log </span><br><span class="line"><span class="comment"># 导出未回收的对象(根据第三列内存大小排序)</span></span><br><span class="line">jmap -histo [pid] | sort -n -k3 &gt; gc.log</span><br><span class="line"><span class="comment"># 导出当前堆情况</span></span><br><span class="line">jmap -dump:format=b,file=xxx.bin [pid]</span><br><span class="line"><span class="comment"># 查看gc情况 每5000ms刷新</span></span><br><span class="line">jstat -gc [pid] 5000</span><br><span class="line"><span class="comment"># 查看gc原因</span></span><br><span class="line">jstat -gccause [pid] 5000</span><br></pre></td></tr></table></figure>
+
+<p>jstatc gc相关的一些命令解析<br><a href="https://www.cnblogs.com/ListenWind/p/5230118.html" target="_blank" rel="noopener">https://www.cnblogs.com/ListenWind/p/5230118.html</a><br><a href="https://blog.csdn.net/zhanlanmg/article/details/48463905" target="_blank" rel="noopener">https://blog.csdn.net/zhanlanmg/article/details/48463905</a></p>
+<h1 id="Jconsole远程配置"><a href="#Jconsole远程配置" class="headerlink" title="Jconsole远程配置"></a>Jconsole远程配置</h1><p>远程主机tomcat配置，以便于本地jconsole连接查看jvm运行情况</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">JAVA_OPTS&#x3D;&quot;-Xms1024m -Xmx5080m -Xss1024k -XX:MetaspaceSize&#x3D;512m -XX:MaxMetaspaceSize&#x3D;2048m&quot;</span><br><span class="line">CATALINA_OPTS&#x3D;&quot;$JAVA_OPTS -Djava.rmi.server.hostname&#x3D;114.55.237.143 -Dcom.sun.management.jmxremote&quot;</span><br><span class="line">CATALINA_OPTS&#x3D;&quot;$CATALINA_OPTS -Dcom.sun.management.jmxremote.port&#x3D;18082&quot;</span><br><span class="line">CATALINA_OPTS&#x3D;&quot;$CATALINA_OPTS -Dcom.sun.management.jmxremote.authenticate&#x3D;true&quot;</span><br><span class="line">CATALINA_OPTS&#x3D;&quot;$CATALINA_OPTS -Dcom.sun.management.jmxremote.ssl&#x3D;false&quot;</span><br><span class="line">CATALINA_OPTS&#x3D;&quot;$CATALINA_OPTS -Dcom.sun.management.jmxremote.pwd.file&#x3D;&#x2F;usr&#x2F;local&#x2F;epean&#x2F;software&#x2F;jdk1.8.0_181&#x2F;jre&#x2F;lib&#x2F;management&#x2F;jmxremote.password&quot;</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的地方：  </p>
+<ol>
+<li>设置CATALINA_OPTS，而不是JAVA_OPTS， JAVA_OPTS会在showdown.sh时也生效，关闭tomcat时提示jmxremote端口占用</li>
+<li>复制jmxremote.password.template为jmxremote.password，文件为只读，修改时需要!wq强制保存。 修改后要chmod 0400 jmxremote.password 修改文件为tomcat启动用户只读，否则启动报错</li>
+<li>如果启动不成功，看一下catalina.out日志</li>
+</ol>
+<h1 id="firewall防火墙"><a href="#firewall防火墙" class="headerlink" title="firewall防火墙"></a>firewall防火墙</h1><p>查看防火墙状态</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall -cmd --state</span><br></pre></td></tr></table></figure>
+<p>关闭防火墙</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop firewalld.service</span><br></pre></td></tr></table></figure>
+<p>开启防火墙</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl start firewalld.service</span><br></pre></td></tr></table></figure>
+<p>重启防火墙</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+<p>查看防火墙已经开放了的端口</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --list-port</span><br></pre></td></tr></table></figure>
+<p>查看防火墙规则</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --list-all</span><br></pre></td></tr></table></figure>
+<p>开放防火墙端口</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 不加--permanent参数下次重启失效</span><br><span class="line">firewall-cmd --zone&#x3D;public --add-port&#x3D;80&#x2F;tcp --permanent</span><br></pre></td></tr></table></figure>
+<p>关闭防火墙端口</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --zone&#x3D;public --remove-port&#x3D;80&#x2F;tcp --permanent</span><br></pre></td></tr></table></figure>
+<p>查看firewall更多命令</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --help</span><br></pre></td></tr></table></figure>
+<h1 id="nginx"><a href="#nginx" class="headerlink" title="nginx"></a>nginx</h1><p>安装：  </p>
+<p>参考官方文档：<a href="http://nginx.org/en/docs/configure.html，各项配置都有解释" target="_blank" rel="noopener">http://nginx.org/en/docs/configure.html，各项配置都有解释</a></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载好tar.gz文件解压后进入目录</span></span><br><span class="line"><span class="comment"># 自定义一些配置，各项配置都有默认值，参考官方文档</span></span><br><span class="line">./configure</span><br><span class="line">    --sbin-path=/usr/<span class="built_in">local</span>/nginx/nginx</span><br><span class="line">    --conf-path=/usr/<span class="built_in">local</span>/nginx/nginx.conf</span><br><span class="line">    --pid-path=/usr/<span class="built_in">local</span>/nginx/nginx.pid</span><br><span class="line">    --with-http_ssl_module</span><br><span class="line">    --with-pcre=../pcre-8.44</span><br><span class="line">    --with-zlib=../zlib-1.2.11</span><br><span class="line"><span class="comment"># 编译</span></span><br><span class="line">make</span><br><span class="line"><span class="comment"># 安装</span></span><br><span class="line">make install</span><br></pre></td></tr></table></figure>
+
+<p>使用：  </p>
+<p>进入到nginx的sbin目录</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动</span></span><br><span class="line">./nginx</span><br><span class="line"><span class="comment"># 停止</span></span><br><span class="line">./nginx -s stop</span><br><span class="line"><span class="comment"># 检查配置文件是否正确</span></span><br><span class="line">./nginx -t</span><br><span class="line"><span class="comment"># 重新加载配置文件</span></span><br><span class="line">./nginx -s reload</span><br><span class="line"><span class="comment"># 查看版本信息</span></span><br><span class="line">./nginx -v</span><br><span class="line"><span class="comment"># 查看版本和编译信息（安装时configure的配置）</span></span><br><span class="line">./nginx -V</span><br><span class="line"><span class="comment"># 查看所有命令说明</span></span><br><span class="line">./nginx -h</span><br></pre></td></tr></table></figure>
+
+<p>升级了公司的nginx支持水印图模块，其实就是用旧版本的configure信息对新版本nginx源码编译，得到nginx二进制文件，替代原来的nginx文件  </p>
+<p>nginx升级参考以及遇到的坑：<br>1、<a href="https://blog.51cto.com/14482279/2435975" target="_blank" rel="noopener">https://blog.51cto.com/14482279/2435975</a><br>2、<a href="https://blog.csdn.net/edwin19911212/article/details/82811818" target="_blank" rel="noopener">https://blog.csdn.net/edwin19911212/article/details/82811818</a><br>3、<a href="https://www.jianshu.com/p/999339387920" target="_blank" rel="noopener">https://www.jianshu.com/p/999339387920</a></p>
+<h1 id="mysql"><a href="#mysql" class="headerlink" title="mysql"></a>mysql</h1><h1 id="npm"><a href="#npm" class="headerlink" title="npm"></a>npm</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">npm outdated <span class="comment"># 检查模块是否已经过时</span></span><br><span class="line">npm update 模块名  <span class="comment">#更新模块</span></span><br><span class="line">npm update 模块名@版本号  <span class="comment"># 更新到某个版本</span></span><br><span class="line">npm update 模块名@latest  <span class="comment"># 最新版本</span></span><br><span class="line">npm update 模块名 --save <span class="comment"># 更新并写入package.json的dependencies模块</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/08/20/springboot-scheduler/" rel="prev" title="spring中使用定时任务">
+      <i class="fa fa-chevron-left"></i> spring中使用定时任务
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/05/18/time-and-space-complexity/" rel="next" title="理解算法时间复杂度和空间复杂度">
+      理解算法时间复杂度和空间复杂度 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#日常使用"><span class="nav-number">1.</span> <span class="nav-text">日常使用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM相关"><span class="nav-number">2.</span> <span class="nav-text">JVM相关</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Jconsole远程配置"><span class="nav-number">3.</span> <span class="nav-text">Jconsole远程配置</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#firewall防火墙"><span class="nav-number">4.</span> <span class="nav-text">firewall防火墙</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#nginx"><span class="nav-number">5.</span> <span class="nav-text">nginx</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#mysql"><span class="nav-number">6.</span> <span class="nav-text">mysql</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#npm"><span class="nav-number">7.</span> <span class="nav-text">npm</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">zhaoyd</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhaoyd</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
