@@ -278,7 +278,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-01-12 11:22:01" itemprop="dateModified" datetime="2023-01-12T11:22:01+08:00">2023-01-12</time>
+                <time title="修改时间：2023-02-01 16:45:39" itemprop="dateModified" datetime="2023-02-01T16:45:39+08:00">2023-02-01</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -303,52 +303,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <a id="more"></a>
-
-<h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>redis是一个开源（BSD许可证）的内存结构存储，用作数据库、缓存、消息、消息代理和流引擎。提供string、hashes、lists、sets、<a href="https://redis.io/docs/data-types/sorted-sets/" target="_blank" rel="noopener">sorted sets</a> （有序集合）、bitmaps（位图）、hyperloglogs（用于基数统计）、geospatial indexes（地理空间索引）、 streams。 redis内置了复制、Lua脚本、LRU删除、事务和不同级别的磁盘持久化（RDB和AOF），并通过Redis Sentinel实现高可用，通过Redis Cluster实现自动分区。</p>
-<h1 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h1><p>省略，参考官网<a href="https://redis.io/docs/getting-started/" target="_blank" rel="noopener">https://redis.io/docs/getting-started/</a></p>
-<h1 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h1><h2 id="String"><a href="#String" class="headerlink" title="String"></a>String</h2><p>字符串，最基本的数据类型，包括text、序列化的对象、二进制数组。通常用于缓存，也能实现计数器和按位运算</p>
-<p>默认一个字符串最多存储512MB的内容</p>
-<h3 id="设置和获取对象"><a href="#设置和获取对象" class="headerlink" title="设置和获取对象"></a>设置和获取对象</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> <span class="built_in">set</span>一个key</span></span><br><span class="line">SET user 1</span><br><span class="line"><span class="meta">#</span><span class="bash"> <span class="built_in">set</span>一个key，只有key不存在时才能设置成功</span></span><br><span class="line">SETNX user 1</span><br><span class="line"><span class="meta">#</span><span class="bash"> get </span></span><br><span class="line">GET user</span><br><span class="line"><span class="meta">#</span><span class="bash"> 批量获取key</span></span><br><span class="line">MGET user user1</span><br></pre></td></tr></table></figure>
-
-<h3 id="计数器"><a href="#计数器" class="headerlink" title="计数器"></a>计数器</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 设置key自增1，如果key不存在，默认0 然后自增1</span></span><br><span class="line">INCR key</span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置key自增指定的数量</span></span><br><span class="line">INCRBY key 5</span><br><span class="line"><span class="meta">#</span><span class="bash"> 同上，支持浮点数</span></span><br><span class="line">INCRBYFLOAT key 0.1</span><br></pre></td></tr></table></figure>
-
-<h3 id="位运算"><a href="#位运算" class="headerlink" title="位运算"></a>位运算</h3><p>参考后续的bitmap</p>
-<h2 id="List"><a href="#List" class="headerlink" title="List"></a>List</h2><p>字符串值的链表结构，最大长度是 2^32 - 1。用法有</p>
-<ol>
-<li>实现栈和队列</li>
-<li>为后台工作系统构建队列管理</li>
-</ol>
-<h3 id="实现队列（先进先出）"><a href="#实现队列（先进先出）" class="headerlink" title="实现队列（先进先出）"></a>实现队列（先进先出）</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 左侧插入元素1，返回长度。如果list不存在，新建一个</span></span><br><span class="line">LPUSH work:queue:ids 1</span><br><span class="line">(integer) 1</span><br><span class="line">LPUSH work:queue:ids 2</span><br><span class="line">(integer) 2</span><br><span class="line"><span class="meta">#</span><span class="bash"> 右侧取出元素</span></span><br><span class="line">RPOP work:queue:ids</span><br><span class="line">"1"</span><br><span class="line">RPOP work:queue:ids</span><br><span class="line">"2"</span><br></pre></td></tr></table></figure>
-
-<h3 id="实现栈（先进后出）"><a href="#实现栈（先进后出）" class="headerlink" title="实现栈（先进后出）"></a>实现栈（先进后出）</h3><p>RPOP换成LPOP即可</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 左侧取出元素</span></span><br><span class="line">LPOP work:queue:ids</span><br></pre></td></tr></table></figure>
-
-<h3 id="阻塞命令"><a href="#阻塞命令" class="headerlink" title="阻塞命令"></a>阻塞命令</h3><p>有点像java中的阻塞队列.如果list为空，则阻塞等待有新元素插入或者超时</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">BLPOP work:queue:ids 10</span><br><span class="line">(nil)</span><br><span class="line">(10.00s)</span><br></pre></td></tr></table></figure>
-
-<h2 id="Set"><a href="#Set" class="headerlink" title="Set"></a>Set</h2><p>字符串值的无序、唯一集合，最大长度为 2^32 - 1 。 用法有</p>
-<ol>
-<li>维护唯一条目的集合（例如追踪一个博客文章的访问ip）</li>
-<li>表示关系（例如一个角色的所有用户集合）</li>
-<li>set常用的操作，交集、并集、差集</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 添加元素</span></span><br><span class="line">SADD user:123:favorites 347</span><br><span class="line">(integer) 1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 判断元素是否存在</span></span><br><span class="line">SISMEMBER user:123:favorites 347</span><br><span class="line">(integer) 1</span><br><span class="line">SISMEMBER user:123:favorites 456</span><br><span class="line">(integer) 0</span><br><span class="line"><span class="meta">#</span><span class="bash"> 获取两个集合交集</span></span><br><span class="line">SINTER user:123:favorites user:456:favorites</span><br><span class="line">1) "347"</span><br><span class="line">2) "123"</span><br><span class="line"><span class="meta">#</span><span class="bash"> 获取集合元素个数</span></span><br><span class="line">SCARD user:123:favorites</span><br><span class="line">(integer) 3</span><br></pre></td></tr></table></figure>
-
-<p>对于大型的数据集，集合元素检查可能会占用大量内存。 如果考虑内存占用，且不需要完美精度，考虑使用布隆过滤器or布谷过滤器替代。</p>
-<h2 id="Hash"><a href="#Hash" class="headerlink" title="Hash"></a>Hash</h2><p>Hash结构是field-value对的集合。 可以使用Hash表示基本对象和存储计数器分组。最大长度为 2^32 - 1 </p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 设<span class="built_in">hash</span>元素多个field-value</span></span><br><span class="line">HSET user:123 username martina firstName Martina lastName Elisa country GB</span><br><span class="line">(integer) 4</span><br><span class="line"><span class="meta">#</span><span class="bash"> 获取某个field</span></span><br><span class="line">HGET user:123 username</span><br><span class="line">"martina"</span><br><span class="line"><span class="meta">#</span><span class="bash">设置key：device:777:stats field:pings 自增1</span></span><br><span class="line">HINCRBY device:777:stats pings 1</span><br><span class="line">(integer) 1</span><br><span class="line">HINCRBY device:777:stats pings 1</span><br><span class="line">(integer) 2</span><br><span class="line"><span class="meta">#</span><span class="bash"> 获取元素</span></span><br><span class="line">HGET device:777:stats pings</span><br><span class="line">"3"</span><br></pre></td></tr></table></figure>
-
-<h2 id="Sorted-sets"><a href="#Sorted-sets" class="headerlink" title="Sorted sets"></a>Sorted sets</h2><p>Sorted sets是一个有序、唯一的集合，根据集合元素关联的score排序。如果score相同，按照字典顺序排序。</p>
-<ol>
-<li>排行榜</li>
-<li>限流器，构建滑动窗口实现限流</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 向集合添加user:1 score：100</span></span><br><span class="line">ZADD leaderboard:455 100 user:1</span><br><span class="line">(integer) 1</span><br><span class="line">ZADD leaderboard:455 75 user:2</span><br><span class="line">(integer) 1</span><br><span class="line">ZADD leaderboard:455 101 user:3</span><br><span class="line">(integer) 1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 获取top3的元素</span></span><br><span class="line">ZRANGE leaderboard:455 0 2 REV WITHSCORES</span><br><span class="line">1) "user:2"</span><br><span class="line">2) "275"</span><br><span class="line">3) "user:3"</span><br><span class="line">4) "101"</span><br><span class="line">5) "user:1"</span><br><span class="line">6) "100"</span><br><span class="line"><span class="meta">#</span><span class="bash">获取user:2 的排名</span></span><br><span class="line">ZREVRANK leaderboard:455 user:2</span><br><span class="line">(integer) 0</span><br></pre></td></tr></table></figure>
-
-
-
-
+          <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>redis是一个开源（BSD许可证）的内存结构存储，用作数据库、缓存、消息、消息代理和流引擎。提供string、hashes、lists、sets、<a href="https://redis.io/docs/data-types/sorted-sets/" target="_blank" rel="noopener">sorted sets</a> （有序集合）、bitmaps（位图）、hyperloglogs（用于基数统计）、geospatial indexes（地理空间索引）、 streams。 redis内置了复制、Lua脚本、LRU删除、事务和不同级别的磁盘持久化（RDB和AOF），并通过Redis Sentinel实现高可用，通过Redis Cluster实现自动分区。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/12/24/redis/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
