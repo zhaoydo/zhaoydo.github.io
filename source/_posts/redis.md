@@ -145,9 +145,9 @@ HGET device:777:stats pings
 "3"
 ```
 
-## Sorted sets
+## Sorted set
 
-Sorted sets是一个有序、唯一的集合，根据集合元素关联的score排序。如果score相同，按照字典顺序排序。
+Sorted set是一个有序、唯一的集合，根据集合元素关联的score排序。如果score相同，按照字典顺序排序。
 
 1. 排行榜
 2. 限流器，构建滑动窗口实现限流
@@ -174,4 +174,16 @@ ZREVRANK leaderboard:455 user:2
 ```
 
 
+
+## Stream
+
+Stream是一个类似只追加日志的数据类型，可以使用Stream实时记录（and  simultaneously syndicate events 没看懂）。 Redis Stream使用场景包括：
+
+1. 事件追踪（跟踪用户行为、点击等）
+2. 传感器监测（现场设备的读数）
+3. 通知（在一个特定Stream中存储每个用户的通知记录）
+
+redis为Stream中每个entry生成一个唯一ID，可以使用ID检索关联的entry，或者读取和处理Stream中所有后续的entry
+
+Redis Stream支持几种削减策略（防止Stream无线增长），和多种消费策略（XREAD、XREADGROUP、XRANGE）
 

@@ -101,4 +101,8 @@ theme: next
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type: ''
+  type: git
+  repo: https://github.com/zhaoydo/zhaoydo.github.io
+  # example, https://github.com/hexojs/hexojs.github.io
+  branch: gh-pages
+  token: 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
